@@ -7,7 +7,7 @@ const app = express();
 const parser = new Parser({ timeout: 10000 });
 const cache = new NodeCache({ stdTTL: 1800 });
 
-app.use(cors());
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 const FEEDS = {
