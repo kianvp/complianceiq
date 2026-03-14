@@ -124,7 +124,12 @@ app.post('/api/chat', async (req, res) => {
     });
 
     const data = await response.json();
-    res.json({ reply: data.content[0].text });
+    console.log('Anthropic response:', JSON.stringify(data).slice(0, 500));
+    if (data.content && data.content[0]) {
+      res.json({ reply: data.content[0].text });
+    } else {
+      res.json({ error: 'Unexpected response: ' + JSON.stringify(data).slice(0, 200) });
+    }
   } catch (err) {
     console.error('AI error:', err);
     res.status(500).json({ error: 'AI request failed' });
