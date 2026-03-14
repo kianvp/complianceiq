@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComplianceIQ — Live Banking Regulatory Feed</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --cream: #f5f0e8;
+  --parchment: #ede8dc;
+  --ink: #1a1610;
+  --ink-mid: #4a4030;
+  --ink-light: #8a7a60;
+  --ink-faint: #c8b89a;
+  --gold: #c8860a;
+  --gold-light: #e8a020;
+  --gold-dim: rgba(200,134,10,0.12);
+  --red: #b83030;
+  --red-dim: rgba(184,48,48,0.1);
+  --green: #2a6040;
+  --green-dim: rgba(42,96,64,0.1);
+  --blue: #1a4060;
+  --blue-dim: rgba(26,64,96,0.1);
+  --border: rgba(26,22,16,0.12);
+  --shadow: 0 4px 24px rgba(26,22,16,0.1);
+  --serif: 'Playfair Display', serif;
+  --sans: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--sans);
+  min-height: 100vh;
+}
+
+/* Header */
+header {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+}
+
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.logo-name {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--cream);
+}
+
+.logo-name span { color: var(--gold-light); }
+
+.logo-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 2px;
+  border-left: 1px solid rgba(255,255,255,0.15);
+  padding-left: 10px;
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.live-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #666;
+  transition: background 0.3s;
+}
+
+.live-dot.live { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; animation: livePulse 2s ease-in-out infinite; }
+.live-dot.error { background: var(--red); }
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.last-updated {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 0.5px;
+}
+
+.refresh-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--ink-faint);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover { border-color: var(--gold); color: var(--gold-light); }
+.refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Layout */
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 32px;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 28px;
+}
+
+/* Sidebar filters */
+.sidebar {
+  position: sticky;
+  top: 80px;
+  align-self: start;
+}
+
+.filter-section { margin-bottom: 28px; }
+
+.filter-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-light);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-title::before {
+  content: '';
+  width: 16px;
+  height: 1px;
+  background: var(--gold);
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 12px;
+  background: white;
+  border: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink-mid);
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.filter-btn:hover { border-left-color: var(--gold-light); background: var(--gold-dim); }
+.filter-btn.active { border-left-color: var(--gold); background: var(--gold-dim); color: var(--ink); font-weight: 500; }
+
+.filter-count {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: var(--parchment);
+  padding: 2px 7px;
+  border-radius: 10px;
+  color: var(--ink-light);
+}
+
+.filter-btn.active .filter-count { background: var(--gold); color: var(--ink); }
+
+.search-box {
+  width: 100%;
+  padding: 10px 12px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+  margin-bottom: 20px;
+}
+
+.search-box:focus { border-color: var(--gold); }
+.search-box::placeholder { color: var(--ink-faint); }
+
+/* Feed */
+.feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.feed-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-light);
+}
+
+.feed-list { display: flex; flex-direction: column; gap: 12px; }
+
+/* Feed item */
+.feed-item {
+  background: white;
+  border: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  border-radius: 6px;
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: var(--shadow);
+  animation: slideIn 0.3s ease forwards;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.feed-item:hover { transform: translateX(3px); box-shadow: 0 6px 28px rgba(26,22,16,0.14); }
+.feed-item.rbi { border-left-color: #1a4060; }
+.feed-item.sebi { border-left-color: #2a6040; }
+.feed-item.expanded { border-color: var(--gold); border-left-color: var(--gold); }
+
+.feed-item-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.source-pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.source-rbi { background: var(--blue-dim); color: var(--blue); }
+.source-sebi { background: var(--green-dim); color: var(--green); }
+
+.cat-pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  background: var(--parchment);
+  color: var(--ink-light);
+  text-transform: uppercase;
+}
+
+.tag-pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  padding: 3px 7px;
+  border-radius: 10px;
+  background: var(--gold-dim);
+  color: var(--gold);
+  border: 1px solid rgba(200,134,10,0.2);
+  text-transform: uppercase;
+}
+
+.feed-item-date {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+
+.feed-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
+.feed-item-summary {
+  font-size: 12px;
+  color: var(--ink-light);
+  line-height: 1.6;
+  display: none;
+}
+
+.feed-item.expanded .feed-item-summary { display: block; }
+
+.feed-item-actions {
+  display: none;
+  margin-top: 14px;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.feed-item.expanded .feed-item-actions { display: flex; }
+
+.action-link {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--gold);
+  text-decoration: none;
+  border: 1px solid rgba(200,134,10,0.3);
+  padding: 5px 12px;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+
+.action-link:hover { background: var(--gold-dim); }
+
+.ask-ai-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--ink);
+  color: var(--gold-light);
+  border: none;
+  padding: 6px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.5px;
+}
+
+.ask-ai-btn:hover { background: #2a2218; }
+
+/* AI answer inline */
+.inline-answer {
+  margin-top: 14px;
+  background: var(--parchment);
+  border-radius: 4px;
+  padding: 16px;
+  display: none;
+}
+
+.inline-answer.visible { display: block; }
+
+.inline-answer-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.inline-answer-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-mid);
+}
+
+/* Skeleton loader */
+.skeleton {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 18px 20px;
+  margin-bottom: 12px;
+}
+
+.skel-line {
+  background: linear-gradient(90deg, var(--parchment) 25%, var(--cream) 50%, var(--parchment) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 3px;
+  height: 12px;
+  margin-bottom: 8px;
+}
+
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+.skel-line.short { width: 40%; }
+.skel-line.medium { width: 70%; }
+.skel-line.long { width: 90%; }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--ink-light);
+}
+
+.empty-state p { font-family: var(--mono); font-size: 13px; }
+
+/* Demo banner */
+.demo-banner {
+  background: var(--gold-dim);
+  border: 1px solid rgba(200,134,10,0.25);
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-mid);
+  margin-bottom: 20px;
+  display: none;
+}
+
+.demo-banner.visible { display: block; }
+.demo-banner strong { color: var(--gold); }
+
+@media (max-width: 768px) {
+  .page { grid-template-columns: 1fr; padding: 16px; }
+  .sidebar { position: static; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-name">Compliance<span>IQ</span></div>
+      <div class="logo-sub">Live Regulatory Feed</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div class="live-indicator">
+        <div class="live-dot" id="liveDot"></div>
+        <span id="liveStatus">Connecting...</span>
+      </div>
+      <div class="last-updated" id="lastUpdated"></div>
+      <button class="refresh-btn" id="refreshBtn" onclick="refreshFeed()">↻ REFRESH</button>
+    </div>
+  </div>
+</header>
+
+<div class="page">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <input class="search-box" type="text" id="searchBox" placeholder="Search circulars..." oninput="filterFeed()">
+
+    <div class="filter-section">
+      <div class="filter-title">Source</div>
+      <button class="filter-btn active" data-filter="source" data-value="all" onclick="setFilter('source','all',this)">
+        All Sources <span class="filter-count" id="count-all">—</span>
+      </button>
+      <button class="filter-btn" data-filter="source" data-value="RBI" onclick="setFilter('source','RBI',this)">
+        🏦 RBI <span class="filter-count" id="count-rbi">—</span>
+      </button>
+      <button class="filter-btn" data-filter="source" data-value="SEBI" onclick="setFilter('source','SEBI',this)">
+        📊 SEBI <span class="filter-count" id="count-sebi">—</span>
+      </button>
+    </div>
+
+    <div class="filter-section">
+      <div class="filter-title">Topic</div>
+      <div id="topicFilters"></div>
+    </div>
+  </aside>
+
+  <!-- Feed -->
+  <main>
+    <div class="demo-banner" id="demoBanner">
+      <strong>⚠ Demo Mode</strong> — Backend server not detected. Showing sample data.
+      To go live, deploy <code>server/</code> and set <code>API_URL</code> in this file.
+    </div>
+
+    <div class="feed-header">
+      <div class="feed-count" id="feedCount">Loading...</div>
+    </div>
+
+    <div class="feed-list" id="feedList">
+      <!-- Skeletons -->
+      ${[1,2,3,4,5].map(() => `
+        <div class="skeleton">
+          <div class="skel-line short"></div>
+          <div class="skel-line long"></div>
+          <div class="skel-line medium"></div>
+        </div>
+      `).join('')}
+    </div>
+  </main>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+// Change this to your deployed server URL once you host it:
+// e.g. 'https://complianceiq-api.onrender.com'
+const API_URL = 'http://localhost:3001';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let allItems = [];
+let activeSource = 'all';
+let activeTopic = 'all';
+
+// ── Demo data (shown when server is offline) ──────────────────────────────────
+const DEMO_ITEMS = [
+  { id: 1, title: "Master Direction on KYC — Amendment March 2025", summary: "RBI has amended the KYC Master Direction to include V-CIP as a primary onboarding channel. All regulated entities must comply by June 2025. Enhanced due diligence required for PEPs and high-risk customers.", source: "RBI", category: "Circular", color: "blue", date: "2025-03-01T00:00:00Z", tags: ["KYC"], link: "https://rbi.org.in" },
+  { id: 2, title: "PMLA Reporting for Virtual Digital Assets — Updated Guidelines", summary: "FIU-IND brings all VASPs under full PMLA scope. CTR threshold ₹10 lakh per day. STR must be filed within 7 working days of suspicion being formed.", source: "RBI", category: "Circular", color: "blue", date: "2025-02-18T00:00:00Z", tags: ["AML/CFT", "Crypto/VDA"], link: "https://rbi.org.in" },
+  { id: 3, title: "Revised LCR Run-off Factors for Digital Deposits", summary: "RBI has increased LCR run-off factor for internet banking retail deposits from 5% to 12%, and mobile banking from 10% to 15%, in response to digital bank-run risks.", source: "RBI", category: "Circular", color: "blue", date: "2025-01-15T00:00:00Z", tags: ["Liquidity", "Basel III"], link: "https://rbi.org.in" },
+  { id: 4, title: "Insider Trading Regulations — Digital Surveillance Mandate", summary: "SEBI mandates automated trade surveillance for all listed entities. Designated persons must use digital pre-clearance system for trades above ₹10 lakh.", source: "SEBI", category: "Circular", color: "green", date: "2025-01-28T00:00:00Z", tags: ["Insider Trading"], link: "https://sebi.gov.in" },
+  { id: 5, title: "SAR/STR Filing Window Reduced to 7 Working Days", summary: "FIU-IND clarifies that the STR filing window is 7 working days from the date suspicion is formed — not from completion of investigation. Records must be retained for 10 years.", source: "RBI", category: "Circular", color: "blue", date: "2025-01-08T00:00:00Z", tags: ["SAR/STR", "AML/CFT"], link: "https://rbi.org.in" },
+  { id: 6, title: "ESG Debt Securities Framework — Social and Sustainability Bonds", summary: "SEBI introduces comprehensive framework for issuance of social bonds, sustainability bonds, and sustainability-linked bonds under ESG classification.", source: "SEBI", category: "Circular", color: "green", date: "2025-06-05T00:00:00Z", tags: ["General"], link: "https://sebi.gov.in" },
+  { id: 7, title: "PCA Framework Revised — RoA Added as Trigger", summary: "RBI updates the Prompt Corrective Action framework to include Return on Assets as a new supervisory trigger alongside CRAR and Net NPA. Private sector banks now explicitly included.", source: "RBI", category: "Circular", color: "blue", date: "2025-02-05T00:00:00Z", tags: ["PCA/NPA"], link: "https://rbi.org.in" },
+  { id: 8, title: "KYC Relaxation for Low-Risk Customers — Extended to June 2026", summary: "RBI allows low-risk customers to continue transacting even if KYC update is pending until June 30, 2026. Banking correspondents authorised to assist with KYC updates.", source: "RBI", category: "Press Release", color: "blue", date: "2025-06-12T00:00:00Z", tags: ["KYC"], link: "https://rbi.org.in" },
+];
+
+// ── Fetch from live server ────────────────────────────────────────────────────
+async function fetchLiveFeed() {
+  const res = await fetch(`${API_URL}/api/feed`);
+  if (!res.ok) throw new Error('Server error ' + res.status);
+  return res.json();
+}
+
+async function refreshFeed() {
+  document.getElementById('refreshBtn').disabled = true;
+  try {
+    await fetch(`${API_URL}/api/feed/refresh`, { method: 'POST' });
+  } catch(e) {}
+  await loadFeed();
+  document.getElementById('refreshBtn').disabled = false;
+}
+
+async function loadFeed() {
+  setStatus('connecting');
+  try {
+    const data = await fetchLiveFeed();
+    allItems = data.items;
+    setStatus('live');
+    const d = new Date(data.fetchedAt);
+    document.getElementById('lastUpdated').textContent = 'Updated ' + d.toLocaleTimeString();
+    document.getElementById('demoBanner').classList.remove('visible');
+  } catch(err) {
+    // Fall back to demo data
+    console.warn('Server offline, using demo data:', err.message);
+    allItems = DEMO_ITEMS;
+    setStatus('offline');
+    document.getElementById('demoBanner').classList.add('visible');
+  }
+  buildTopicFilters();
+  updateCounts();
+  renderFeed();
+}
+
+function setStatus(state) {
+  const dot = document.getElementById('liveDot');
+  const label = document.getElementById('liveStatus');
+  dot.className = 'live-dot';
+  if (state === 'live') { dot.classList.add('live'); label.textContent = 'LIVE'; }
+  else if (state === 'offline') { dot.classList.add('error'); label.textContent = 'DEMO MODE'; }
+  else { label.textContent = 'Connecting...'; }
+}
+
+// ── Build dynamic topic filter buttons ───────────────────────────────────────
+function buildTopicFilters() {
+  const tags = [...new Set(allItems.flatMap(i => i.tags))].sort();
+  const container = document.getElementById('topicFilters');
+  container.innerHTML = `
+    <button class="filter-btn active" data-filter="topic" data-value="all" onclick="setFilter('topic','all',this)">
+      All Topics <span class="filter-count">${allItems.length}</span>
+    </button>
+  ` + tags.map(tag => {
+    const count = allItems.filter(i => i.tags.includes(tag)).length;
+    return `<button class="filter-btn" data-filter="topic" data-value="${tag}" onclick="setFilter('topic','${tag}',this)">
+      ${tag} <span class="filter-count">${count}</span>
+    </button>`;
+  }).join('');
+}
+
+function updateCounts() {
+  document.getElementById('count-all').textContent = allItems.length;
+  document.getElementById('count-rbi').textContent = allItems.filter(i => i.source === 'RBI').length;
+  document.getElementById('count-sebi').textContent = allItems.filter(i => i.source === 'SEBI').length;
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+function setFilter(type, value, el) {
+  document.querySelectorAll(`[data-filter="${type}"]`).forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  if (type === 'source') activeSource = value;
+  else activeTopic = value;
+  renderFeed();
+}
+
+function filterFeed() { renderFeed(); }
+
+function getFiltered() {
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  return allItems.filter(item => {
+    if (activeSource !== 'all' && item.source !== activeSource) return false;
+    if (activeTopic !== 'all' && !item.tags.includes(activeTopic)) return false;
+    if (q && !item.title.toLowerCase().includes(q) && !item.summary.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderFeed() {
+  const items = getFiltered();
+  document.getElementById('feedCount').textContent = `${items.length} regulation${items.length !== 1 ? 's' : ''}`;
+
+  const list = document.getElementById('feedList');
+  if (!items.length) {
+    list.innerHTML = '<div class="empty-state"><p>No matching circulars found.</p></div>';
+    return;
+  }
+
+  list.innerHTML = items.map((item, i) => {
+    const date = new Date(item.date);
+    const dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const srcClass = item.source === 'RBI' ? 'rbi' : 'sebi';
+    const delay = Math.min(i * 0.04, 0.4);
+
+    return `<div class="feed-item ${srcClass}" style="animation-delay:${delay}s" id="item-${item.id}" onclick="toggleItem('${item.id}')">
+      <div class="feed-item-top">
+        <span class="source-pill source-${srcClass}">${item.source}</span>
+        <span class="cat-pill">${item.category}</span>
+        ${item.tags.slice(0,2).map(t => `<span class="tag-pill">${t}</span>`).join('')}
+        <span class="feed-item-date">${dateStr}</span>
+      </div>
+      <div class="feed-item-title">${escHtml(item.title)}</div>
+      <div class="feed-item-summary">${escHtml(item.summary || 'No summary available.')}</div>
+      <div class="feed-item-actions">
+        ${item.link ? `<a class="action-link" href="${item.link}" target="_blank" onclick="event.stopPropagation()">View Source ↗</a>` : ''}
+        <button class="ask-ai-btn" onclick="event.stopPropagation(); askAbout('${item.id}')">✦ Ask AI about this</button>
+      </div>
+      <div class="inline-answer" id="answer-${item.id}">
+        <div class="inline-answer-label">AI Summary</div>
+        <div class="inline-answer-text" id="answer-text-${item.id}"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleItem(id) {
+  const el = document.getElementById('item-' + id);
+  el.classList.toggle('expanded');
+}
+
+// ── Ask AI ────────────────────────────────────────────────────────────────────
+async function askAbout(id) {
+  const item = allItems.find(i => String(i.id) === String(id));
+  if (!item) return;
+
+  const answerEl = document.getElementById('answer-' + id);
+  const textEl = document.getElementById('answer-text-' + id);
+
+  answerEl.classList.add('visible');
+  textEl.innerHTML = '<em style="color:var(--ink-faint)">Summarising for compliance teams...</em>';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: `You are a senior banking compliance officer in India. Summarise this regulation for a compliance team in 3-4 sentences. Focus on: what changed, who is affected, and what action teams must take. Write in plain, direct prose — no bullet points, no headers.
+
+Regulation: ${item.title}
+Detail: ${item.summary}`
+        }]
+      })
+    });
+    const data = await res.json();
+    textEl.textContent = data.content[0].text;
+  } catch(e) {
+    textEl.textContent = 'Could not reach AI. Check your API connection.';
+  }
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadFeed();
+</script>
+</body>
+</html>

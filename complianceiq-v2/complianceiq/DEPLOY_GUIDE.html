@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComplianceIQ — Deploy Guide</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #22263a;
+  --border: rgba(255,255,255,0.08);
+  --accent: #6c63ff;
+  --accent-dim: rgba(108,99,255,0.15);
+  --green: #22c55e;
+  --green-dim: rgba(34,197,94,0.12);
+  --yellow: #f59e0b;
+  --yellow-dim: rgba(245,158,11,0.12);
+  --text: #e2e8f0;
+  --text-mid: #94a3b8;
+  --text-faint: #475569;
+  --sans: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.6; }
+
+.hero {
+  background: linear-gradient(135deg, #1a1d27 0%, #0f1117 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 48px 32px;
+  text-align: center;
+}
+
+.hero-badge {
+  display: inline-block;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(108,99,255,0.3);
+  margin-bottom: 20px;
+}
+
+.hero h1 { font-size: 32px; font-weight: 600; margin-bottom: 10px; }
+.hero h1 span { color: var(--accent); }
+.hero p { color: var(--text-mid); font-size: 15px; max-width: 480px; margin: 0 auto; }
+
+.time-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--green-dim);
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(34,197,94,0.25);
+  margin-top: 16px;
+}
+
+.container { max-width: 760px; margin: 0 auto; padding: 48px 24px; }
+
+/* Progress bar */
+.progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 48px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.progress-step {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.prog-circle {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.prog-circle.done { background: var(--green); border-color: var(--green); color: #000; }
+.prog-circle.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 16px rgba(108,99,255,0.5); }
+
+.prog-label {
+  font-size: 10px;
+  color: var(--text-faint);
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--mono);
+  letter-spacing: 0.5px;
+}
+
+.prog-line {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  margin: 0 -1px;
+  transition: background 0.3s;
+}
+
+.prog-line.done { background: var(--green); }
+
+/* Steps */
+.step {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.step.active { border-color: var(--accent); }
+.step.done { border-color: rgba(34,197,94,0.3); }
+
+.step-header {
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+}
+
+.step-num {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-mid);
+  flex-shrink: 0;
+}
+
+.step.active .step-num { background: var(--accent); color: #fff; }
+.step.done .step-num { background: var(--green); color: #000; }
+.step.done .step-num::after { content: '✓'; }
+
+.step-info { flex: 1; }
+.step-title { font-size: 16px; font-weight: 600; margin-bottom: 2px; }
+.step-sub { font-size: 13px; color: var(--text-mid); }
+
+.step-time {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  background: var(--surface2);
+  padding: 3px 10px;
+  border-radius: 10px;
+}
+
+.step-body {
+  padding: 0 24px 24px;
+  display: none;
+}
+
+.step.active .step-body,
+.step.done .step-body { display: block; }
+
+/* Instruction items */
+.instruction {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 16px;
+  align-items: flex-start;
+}
+
+.instr-num {
+  min-width: 24px; height: 24px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.instr-text { font-size: 14px; color: var(--text-mid); line-height: 1.6; }
+.instr-text strong { color: var(--text); font-weight: 600; }
+.instr-text a { color: var(--accent); text-decoration: none; }
+.instr-text a:hover { text-decoration: underline; }
+
+/* Screen mockups */
+.screen-mock {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 16px 0;
+  overflow: hidden;
+}
+
+.screen-bar {
+  background: #2d3148;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.screen-dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot-red { background: #ff5f57; }
+.dot-yellow { background: #febc2e; }
+.dot-green { background: #28c840; }
+
+.screen-url {
+  flex: 1;
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-left: 8px;
+}
+
+.screen-body { padding: 16px; }
+
+/* Form fields in mockup */
+.mock-form { display: flex; flex-direction: column; gap: 10px; }
+
+.mock-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mock-label { font-size: 11px; color: var(--text-faint); font-family: var(--mono); letter-spacing: 0.5px; }
+
+.mock-input {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.mock-input.highlight { border-color: var(--accent); color: var(--accent); }
+.mock-input.green { border-color: var(--green); color: var(--green); }
+
+.mock-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: default;
+  margin-top: 4px;
+  display: inline-block;
+}
+
+.mock-btn.green { background: var(--green); color: #000; }
+
+/* Code block */
+.code-block {
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #79c0ff;
+  margin: 12px 0;
+  position: relative;
+  overflow-x: auto;
+}
+
+.code-block .comment { color: #6e7681; }
+.code-block .string { color: #a5d6ff; }
+.code-block .keyword { color: #ff7b72; }
+
+.copy-btn {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 0.15s;
+}
+
+.copy-btn:hover { color: var(--text); border-color: var(--text-mid); }
+
+/* Alert boxes */
+.alert {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 6px;
+  margin: 14px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.alert-icon { font-size: 18px; flex-shrink: 0; }
+.alert-info { background: var(--accent-dim); border: 1px solid rgba(108,99,255,0.25); color: #a5b4fc; }
+.alert-success { background: var(--green-dim); border: 1px solid rgba(34,197,94,0.25); color: #86efac; }
+.alert-warn { background: var(--yellow-dim); border: 1px solid rgba(245,158,11,0.25); color: #fcd34d; }
+
+/* Done button */
+.done-btn {
+  background: var(--green);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.done-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(34,197,94,0.3); }
+
+.next-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: all 0.2s;
+}
+
+.next-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(108,99,255,0.3); }
+
+.divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+/* Final success */
+.success-card {
+  background: var(--green-dim);
+  border: 1px solid rgba(34,197,94,0.3);
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  display: none;
+}
+
+.success-card.visible { display: block; }
+.success-icon { font-size: 48px; margin-bottom: 16px; }
+.success-title { font-size: 22px; font-weight: 700; color: var(--green); margin-bottom: 8px; }
+.success-desc { color: var(--text-mid); font-size: 14px; max-width: 400px; margin: 0 auto; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-badge">DEPLOY GUIDE</div>
+  <h1>Go Live with <span>ComplianceIQ</span></h1>
+  <p>Deploy your live RBI/SEBI regulatory feed to the internet — completely free, no credit card.</p>
+  <div class="time-badge">⏱ ~15 minutes total</div>
+</div>
+
+<div class="container">
+
+  <!-- Progress -->
+  <div class="progress-bar" id="progressBar">
+    <div class="progress-step">
+      <div class="prog-circle active" id="prog-1">1<div class="prog-label">GitHub</div></div>
+      <div class="prog-line" id="line-1"></div>
+    </div>
+    <div class="progress-step">
+      <div class="prog-circle" id="prog-2">2<div class="prog-label">Render</div></div>
+      <div class="prog-line" id="line-2"></div>
+    </div>
+    <div class="progress-step">
+      <div class="prog-circle" id="prog-3">3<div class="prog-label">Connect</div></div>
+      <div class="prog-line" id="line-3"></div>
+    </div>
+    <div class="progress-step">
+      <div class="prog-circle" id="prog-4">4<div class="prog-label">Frontend</div></div>
+      <div class="prog-line" id="line-4"></div>
+    </div>
+    <div class="progress-step">
+      <div class="prog-circle" id="prog-5">5<span class="prog-label">Done!</span></div>
+    </div>
+  </div>
+
+  <!-- Step 1: GitHub -->
+  <div class="step active" id="step-1">
+    <div class="step-header" onclick="toggleStep(1)">
+      <div class="step-num" id="stepnum-1">1</div>
+      <div class="step-info">
+        <div class="step-title">Upload code to GitHub</div>
+        <div class="step-sub">GitHub is where your code lives — Render will read it from here</div>
+      </div>
+      <div class="step-time">5 min</div>
+    </div>
+    <div class="step-body">
+      <div class="alert alert-info">
+        <div class="alert-icon">ℹ️</div>
+        <div>GitHub is a free website that stores code. Think of it like Google Drive but for code files. You need an account — it's free and takes 1 minute.</div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">1</div>
+        <div class="instr-text">Go to <a href="https://github.com" target="_blank">github.com</a> and click <strong>Sign Up</strong>. Create a free account.</div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">2</div>
+        <div class="instr-text">Once logged in, click the <strong>+</strong> icon (top right) → <strong>New repository</strong></div>
+      </div>
+
+      <div class="screen-mock">
+        <div class="screen-bar">
+          <div class="screen-dot dot-red"></div>
+          <div class="screen-dot dot-yellow"></div>
+          <div class="screen-dot dot-green"></div>
+          <div class="screen-url">github.com/new</div>
+        </div>
+        <div class="screen-body">
+          <div class="mock-form">
+            <div class="mock-field">
+              <div class="mock-label">REPOSITORY NAME</div>
+              <div class="mock-input highlight">complianceiq</div>
+            </div>
+            <div class="mock-field">
+              <div class="mock-label">VISIBILITY</div>
+              <div class="mock-input">● Public</div>
+            </div>
+            <div class="mock-btn">Create repository</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">3</div>
+        <div class="instr-text">Name it <strong>complianceiq</strong>, set to <strong>Public</strong>, click <strong>Create repository</strong></div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">4</div>
+        <div class="instr-text">On the next page, click <strong>uploading an existing file</strong> (the link in the middle of the page)</div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">5</div>
+        <div class="instr-text">From the <strong>complianceiq.zip</strong> you downloaded, extract it. Then drag the entire <strong>server/</strong> folder AND the <strong>render.yaml</strong> file into the GitHub upload area.</div>
+      </div>
+
+      <div class="alert alert-warn">
+        <div class="alert-icon">⚠️</div>
+        <div>Make sure you upload the <strong>server/</strong> folder contents (<code>index.js</code> and <code>package.json</code>) plus <code>render.yaml</code>. The frontend HTML is separate — we'll handle it in Step 4.</div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">6</div>
+        <div class="instr-text">Scroll down, click <strong>Commit changes</strong>. Your code is now on GitHub!</div>
+      </div>
+
+      <button class="done-btn" onclick="completeStep(1)">✓ Done — my code is on GitHub</button>
+    </div>
+  </div>
+
+  <!-- Step 2: Render -->
+  <div class="step" id="step-2">
+    <div class="step-header" onclick="toggleStep(2)">
+      <div class="step-num" id="stepnum-2">2</div>
+      <div class="step-info">
+        <div class="step-title">Deploy on Render.com</div>
+        <div class="step-sub">Render will read your GitHub code and run it as a live server</div>
+      </div>
+      <div class="step-time">5 min</div>
+    </div>
+    <div class="step-body">
+      <div class="alert alert-success">
+        <div class="alert-icon">✅</div>
+        <div>Render's free tier is genuinely free — no credit card needed. Your server runs 24/7.</div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">1</div>
+        <div class="instr-text">Go to <a href="https://render.com" target="_blank">render.com</a> → click <strong>Get Started for Free</strong> → sign up with your GitHub account (click "Continue with GitHub" — easiest option)</div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">2</div>
+        <div class="instr-text">In the Render dashboard, click <strong>New +</strong> → <strong>Web Service</strong></div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">3</div>
+        <div class="instr-text">Click <strong>Connect account</strong> under GitHub, then select your <strong>complianceiq</strong> repo</div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">4</div>
+        <div class="instr-text">Fill in the settings exactly like this:</div>
+      </div>
+
+      <div class="screen-mock">
+        <div class="screen-bar">
+          <div class="screen-dot dot-red"></div>
+          <div class="screen-dot dot-yellow"></div>
+          <div class="screen-dot dot-green"></div>
+          <div class="screen-url">dashboard.render.com/new/web</div>
+        </div>
+        <div class="screen-body">
+          <div class="mock-form">
+            <div class="mock-field">
+              <div class="mock-label">NAME</div>
+              <div class="mock-input highlight">complianceiq-api</div>
+            </div>
+            <div class="mock-field">
+              <div class="mock-label">ROOT DIRECTORY</div>
+              <div class="mock-input highlight">server</div>
+            </div>
+            <div class="mock-field">
+              <div class="mock-label">BUILD COMMAND</div>
+              <div class="mock-input highlight">npm install</div>
+            </div>
+            <div class="mock-field">
+              <div class="mock-label">START COMMAND</div>
+              <div class="mock-input highlight">npm start</div>
+            </div>
+            <div class="mock-field">
+              <div class="mock-label">INSTANCE TYPE</div>
+              <div class="mock-input green">Free</div>
+            </div>
+            <div class="mock-btn green">Create Web Service</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">5</div>
+        <div class="instr-text">Click <strong>Create Web Service</strong>. Render will now build and deploy — takes about 2-3 minutes. You'll see logs scrolling.</div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">6</div>
+        <div class="instr-text">When you see <strong>"Your service is live 🎉"</strong> — copy the URL at the top. It looks like: <code style="color:#6c63ff">https://complianceiq-api.onrender.com</code></div>
+      </div>
+
+      <div class="alert alert-info">
+        <div class="alert-icon">ℹ️</div>
+        <div>Test it: paste your URL + <code>/api/feed</code> in a browser. You should see JSON data from RBI and SEBI. If you see it — your server is live!</div>
+      </div>
+
+      <button class="done-btn" onclick="completeStep(2)">✓ Server is live, I have my URL</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Connect -->
+  <div class="step" id="step-3">
+    <div class="step-header" onclick="toggleStep(3)">
+      <div class="step-num" id="stepnum-3">3</div>
+      <div class="step-info">
+        <div class="step-title">Connect the frontend to your server</div>
+        <div class="step-sub">One line to change in the HTML file</div>
+      </div>
+      <div class="step-time">2 min</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction">
+        <div class="instr-num">1</div>
+        <div class="instr-text">Open <strong>frontend/index.html</strong> from your zip in any text editor (Notepad, VS Code, anything)</div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">2</div>
+        <div class="instr-text">Find this line near the bottom (use Ctrl+F to search for <code>API_URL</code>):</div>
+      </div>
+
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this, `const API_URL = 'http://localhost:3001';`)">COPY</button>
+        <span class="keyword">const</span> API_URL = <span class="string">'http://localhost:3001'</span>;
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">3</div>
+        <div class="instr-text">Replace <code>http://localhost:3001</code> with your Render URL:</div>
+      </div>
+
+      <div class="code-block">
+        <span class="comment">// Change it to look like this (use YOUR actual Render URL):</span><br>
+        <span class="keyword">const</span> API_URL = <span class="string">'https://complianceiq-api.onrender.com'</span>;
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">4</div>
+        <div class="instr-text">Save the file. Open it in your browser — the green <strong>LIVE</strong> dot should appear in the top right with real RBI/SEBI data!</div>
+      </div>
+
+      <button class="done-btn" onclick="completeStep(3)">✓ Frontend is connecting to live server</button>
+    </div>
+  </div>
+
+  <!-- Step 4: Host frontend -->
+  <div class="step" id="step-4">
+    <div class="step-header" onclick="toggleStep(4)">
+      <div class="step-num" id="stepnum-4">4</div>
+      <div class="step-info">
+        <div class="step-title">Get a shareable link (Netlify)</div>
+        <div class="step-sub">Host your frontend so anyone can open it — free, takes 1 minute</div>
+      </div>
+      <div class="step-time">2 min</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction">
+        <div class="instr-num">1</div>
+        <div class="instr-text">Go to <a href="https://netlify.com" target="_blank">netlify.com</a> → Sign up free (use your GitHub account)</div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">2</div>
+        <div class="instr-text">On the dashboard, look for the <strong>"Deploy manually"</strong> section — there's a drag-and-drop box that says <em>"Drag and drop your site folder here"</em></div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">3</div>
+        <div class="instr-text">Drag your <strong>frontend/</strong> folder (the one containing <code>index.html</code>) into that box</div>
+      </div>
+
+      <div class="instruction">
+        <div class="instr-num">4</div>
+        <div class="instr-text">Netlify instantly gives you a URL like <code style="color:#6c63ff">https://magical-unicorn-123.netlify.app</code> — that's your live link! You can share it with your dad.</div>
+      </div>
+
+      <div class="alert alert-success">
+        <div class="alert-icon">🎉</div>
+        <div>You can also rename it to something nicer like <strong>complianceiq.netlify.app</strong> in Netlify's settings → Site configuration → Change site name.</div>
+      </div>
+
+      <button class="done-btn" onclick="completeStep(4)">✓ I have a shareable link!</button>
+    </div>
+  </div>
+
+  <!-- Step 5: Done -->
+  <div class="step" id="step-5">
+    <div class="step-header" onclick="toggleStep(5)">
+      <div class="step-num" id="stepnum-5">5</div>
+      <div class="step-info">
+        <div class="step-title">You're live 🎉</div>
+        <div class="step-sub">Share the link with your dad</div>
+      </div>
+      <div class="step-time">Done!</div>
+    </div>
+    <div class="step-body">
+      <div class="success-card visible">
+        <div class="success-icon">🏦</div>
+        <div class="success-title">ComplianceIQ is Live!</div>
+        <div class="success-desc">Your dad now has a real, working banking compliance intelligence tool pulling live RBI and SEBI circulars — built entirely by you. That's genuinely impressive.</div>
+      </div>
+
+      <div style="margin-top: 24px;">
+        <div style="font-size: 14px; color: var(--text-mid); margin-bottom: 16px; font-weight: 500;">What to tell your dad when you show it:</div>
+        <div class="code-block" style="color: var(--text-mid); font-size: 13px; line-height: 1.8;">
+          "I built this tool that pulls live circulars from RBI and SEBI,<br>
+          auto-tags them by topic — KYC, AML, Basel — and lets you<br>
+          ask AI questions about any regulation in plain English.<br>
+          It runs on a real server I deployed for free."
+        </div>
+      </div>
+
+      <div class="alert alert-info" style="margin-top: 20px;">
+        <div class="alert-icon">💡</div>
+        <div><strong>Next features you could add:</strong> daily email digest when new circulars drop, compliance task tracker with deadlines, SAR draft generator. Ask ComplianceIQ (Claude) to build any of these!</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let currentStep = 1;
+const totalSteps = 5;
+
+function toggleStep(n) {
+  // allow expanding any already-done step
+  const step = document.getElementById('step-' + n);
+  if (step.classList.contains('done')) {
+    step.classList.toggle('active');
+  }
+}
+
+function completeStep(n) {
+  const step = document.getElementById('step-' + n);
+  step.classList.remove('active');
+  step.classList.add('done');
+
+  // update progress circle
+  const circle = document.getElementById('prog-' + n);
+  circle.className = 'prog-circle done';
+  circle.innerHTML = '✓<div class="prog-label">' + circle.querySelector('.prog-label').textContent + '</div>';
+
+  // fill progress line
+  const line = document.getElementById('line-' + n);
+  if (line) line.classList.add('done');
+
+  // activate next step
+  const next = n + 1;
+  if (next <= totalSteps) {
+    const nextStep = document.getElementById('step-' + next);
+    nextStep.classList.add('active');
+    const nextCircle = document.getElementById('prog-' + next);
+    nextCircle.classList.add('active');
+    nextStep.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function copyCode(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'COPIED!';
+    setTimeout(() => btn.textContent = 'COPY', 2000);
+  });
+}
+</script>
+</body>
+</html>
