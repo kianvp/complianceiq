@@ -116,7 +116,7 @@ app.post('/api/chat', async (req, res) => {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 1000,
         system: systemPrompt,
         messages
@@ -135,4 +135,3 @@ app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISO
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`ComplianceIQ API running on port ${PORT}`));
-
