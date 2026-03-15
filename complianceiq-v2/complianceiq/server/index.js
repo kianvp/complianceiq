@@ -13,8 +13,8 @@ app.use(express.json());
 const FEEDS = {
   sebi_circulars: { url: 'https://www.sebi.gov.in/sebirss.xml', label: 'SEBI', category: 'Circular', color: 'green' },
   sebi_press: { url: 'https://www.sebi.gov.in/sebi_data/rss/pressrelease.xml', label: 'SEBI', category: 'Press Release', color: 'green' },
-  rbi_press: { url: 'https://www.rbi.org.in/scripts/rss.aspx', label: 'RBI', category: 'Press Release', color: 'blue' },
-  rbi_circulars: { url: 'https://rbidocs.rbi.org.in/rdocs/content/docs/CIRU.xml', label: 'RBI', category: 'Circular', color: 'blue' },
+  rbi_press: { url: 'https://www.rbi.org.in/pressreleases_rss.xml', label: 'RBI', category: 'Press Release', color: 'blue' },
+  rbi_circulars: { url: 'https://www.rbi.org.in/notifications_rss.xml', label: 'RBI', category: 'Circular', color: 'blue' },
 };
 
 const TAG_RULES = [
@@ -138,4 +138,3 @@ app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISO
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log('ComplianceIQ API running on port ' + PORT));
-
