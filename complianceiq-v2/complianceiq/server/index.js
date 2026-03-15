@@ -43,6 +43,19 @@ function classifyTags(title, summary) {
   return tags.length ? tags : ['General'];
 }
 
+// Rule-based severity scorer (instant, no AI needed)
+function scoreSeverity(title, summary) {
+  const text = (title + ' ' + summary).toLowerCase();
+  let score = 3;
+  const critical = ['penalty', 'penalt', 'deadline', 'immediate', 'urgent', 'mandatory', 'compulsory', 'violation', 'action must', 'comply by', 'enforcement', 'suspension', 'cancellation', 'prohibitory', 'adjudication'];
+  const high = ['amendment', 'revised', 'new circular', 'master direction', 'framework', 'guidelines', 'regulation', 'compliance', 'aml', 'kyc', 'pmla', 'basel', 'capital', 'liquidity', 'pca'];
+  const low = ['press release', 'appointment', 'takes charge', 'seminar', 'conference', 'awareness', 'clarification'];
+  if (critical.some(w => text.includes(w))) score = 8 + Math.floor(Math.random() * 2);
+  else if (high.some(w => text.includes(w))) score = 5 + Math.floor(Math.random() * 3);
+  else if (low.some(w => text.includes(w))) score = 1 + Math.floor(Math.random() * 2);
+  return Math.min(10, Math.max(1, score));
+}
+
 async function fetchFeed(key, config) {
   try {
     const feed = await parser.parseURL(config.url);
@@ -56,6 +69,7 @@ async function fetchFeed(key, config) {
       category: config.category,
       color: config.color,
       tags: classifyTags(item.title, item.contentSnippet || ''),
+      severity: scoreSeverity(item.title, item.contentSnippet || ''),
     }));
   } catch (err) {
     console.error('Failed to fetch ' + key + ':', err.message);
@@ -82,28 +96,36 @@ app.post('/api/feed/refresh', (req, res) => {
   res.json({ ok: true });
 });
 
+// ── AI Chat endpoint (Groq) ───────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   const { messages, circulars } = req.body;
   if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'messages required' });
 
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  if (!GEMINI_API_KEY) return res.status(500).json({ error: 'API key not configured on server' });
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+  if (!GROQ_API_KEY) return res.status(500).json({ error: 'API key not configured on server' });
 
   const circularContext = circulars && circulars.length
     ? 'Live circulars on screen:\n' + circulars.slice(0, 15).map(i => '- ' + i.source + ': ' + i.title + ' (' + i.tags.join(', ') + ')').join('\n')
     : '';
 
-  const lastMessage = messages[messages.length - 1].content;
-  const prompt = 'You are a senior banking compliance officer in India with deep expertise in RBI regulations, PMLA, Basel III, KYC/AML, SEBI, and FEMA. Answer clearly and practically. Be specific with numbers, thresholds, deadlines. Keep answers under 200 words. Plain prose only.\n\n' + circularContext + '\n\nQuestion: ' + lastMessage;
+  const systemPrompt = 'You are a senior banking compliance officer in India with deep expertise in RBI regulations, PMLA, Basel III, KYC/AML, SEBI, and FEMA. Answer clearly and practically. Be specific with numbers, thresholds, deadlines. Keep answers under 200 words. Plain prose only.\n\n' + circularContext;
 
   try {
-    const response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_API_KEY,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
-    );
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + GROQ_API_KEY
+      },
+      body: JSON.stringify({
+        model: 'llama3-8b-8192',
+        messages: [{ role: 'system', content: systemPrompt }, ...messages],
+        max_tokens: 500
+      })
+    });
     const data = await response.json();
-    console.log('Gemini:', JSON.stringify(data).slice(0, 200));
-    const reply = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+    console.log('Groq response:', JSON.stringify(data).slice(0, 200));
+    const reply = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
     if (reply) { res.json({ reply }); }
     else { res.json({ error: 'Unexpected: ' + JSON.stringify(data).slice(0, 200) }); }
   } catch (err) {
