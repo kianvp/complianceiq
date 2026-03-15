@@ -118,7 +118,7 @@ app.post('/api/chat', async (req, res) => {
         'Authorization': 'Bearer ' + GROQ_API_KEY
       },
       body: JSON.stringify({
-        model: 'llama3-8b-8192',
+        model: 'llama-3.1-8b-instant',
         messages: [{ role: 'system', content: systemPrompt }, ...messages],
         max_tokens: 500
       })
@@ -138,3 +138,4 @@ app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISO
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log('ComplianceIQ API running on port ' + PORT));
+
