@@ -33,7 +33,8 @@ const TAG_RULES = [
   { keywords: ['NBFC', 'non-banking'], tag: 'NBFC' },
 ];
 
-function classifyTags(title = '', summary = '') {
+function classifyTags(title, summary) {
+  title = title || ''; summary = summary || '';
   const text = (title + ' ' + summary).toLowerCase();
   const tags = [];
   for (const rule of TAG_RULES) {
@@ -57,7 +58,7 @@ async function fetchFeed(key, config) {
       tags: classifyTags(item.title, item.contentSnippet || ''),
     }));
   } catch (err) {
-    console.error(`Failed to fetch ${key}:`, err.message);
+    console.error('Failed to fetch ' + key + ':', err.message);
     return [];
   }
 }
@@ -65,18 +66,11 @@ async function fetchFeed(key, config) {
 app.get('/api/feed', async (req, res) => {
   const cached = cache.get('feed');
   if (cached) return res.json({ items: cached, cached: true, fetchedAt: cache.get('fetchedAt') });
-
-  const results = await Promise.allSettled(
-    Object.entries(FEEDS).map(([key, config]) => fetchFeed(key, config))
-  );
-
+  const results = await Promise.allSettled(Object.entries(FEEDS).map(([key, config]) => fetchFeed(key, config)));
   const allItems = results
-    .filter(r => r.status === 'fulfilled')
-    .flatMap(r => r.value)
+    .filter(r => r.status === 'fulfilled').flatMap(r => r.value)
     .filter((item, idx, arr) => arr.findIndex(i => i.id === item.id) === idx)
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
-    .slice(0, 60);
-
+    .sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 60);
   const fetchedAt = new Date().toISOString();
   cache.set('feed', allItems);
   cache.set('fetchedAt', fetchedAt);
@@ -84,59 +78,41 @@ app.get('/api/feed', async (req, res) => {
 });
 
 app.post('/api/feed/refresh', (req, res) => {
-  cache.del('feed');
-  cache.del('fetchedAt');
+  cache.del('feed'); cache.del('fetchedAt');
   res.json({ ok: true });
 });
 
-// ── AI Chat endpoint ──────────────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   const { messages, circulars } = req.body;
-  if (!messages || !Array.isArray(messages)) {
-    return res.status(400).json({ error: 'messages required' });
-  }
+  if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'messages required' });
 
-  const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-  if (!ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: 'API key not configured on server' });
-  }
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_API_KEY) return res.status(500).json({ error: 'API key not configured on server' });
 
   const circularContext = circulars && circulars.length
-    ? 'Live circulars currently on screen:\n' + circulars.slice(0, 15).map(i => `- ${i.source}: ${i.title} (${i.tags.join(', ')})`).join('\n')
+    ? 'Live circulars on screen:\n' + circulars.slice(0, 15).map(i => '- ' + i.source + ': ' + i.title + ' (' + i.tags.join(', ') + ')').join('\n')
     : '';
 
-  const systemPrompt = `You are a senior banking compliance officer in India with deep expertise in RBI regulations, PMLA, Basel III, KYC/AML, SEBI, and FEMA. Answer questions clearly and practically. Be specific with numbers, thresholds, and deadlines. Keep answers concise (under 200 words). Write in plain prose — no bullet points.\n\n${circularContext}`;
+  const lastMessage = messages[messages.length - 1].content;
+  const prompt = 'You are a senior banking compliance officer in India with deep expertise in RBI regulations, PMLA, Basel III, KYC/AML, SEBI, and FEMA. Answer clearly and practically. Be specific with numbers, thresholds, deadlines. Keep answers under 200 words. Plain prose only.\n\n' + circularContext + '\n\nQuestion: ' + lastMessage;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages
-      })
-    });
-
+    const response = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_API_KEY,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
+    );
     const data = await response.json();
-    console.log('Anthropic response:', JSON.stringify(data).slice(0, 500));
-    if (data.content && data.content[0]) {
-      res.json({ reply: data.content[0].text });
-    } else {
-      res.json({ error: 'Unexpected response: ' + JSON.stringify(data).slice(0, 200) });
-    }
+    console.log('Gemini:', JSON.stringify(data).slice(0, 200));
+    const reply = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+    if (reply) { res.json({ reply }); }
+    else { res.json({ error: 'Unexpected: ' + JSON.stringify(data).slice(0, 200) }); }
   } catch (err) {
     console.error('AI error:', err);
-    res.status(500).json({ error: 'AI request failed' });
+    res.status(500).json({ error: 'AI request failed: ' + err.message });
   }
 });
 
 app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`ComplianceIQ API running on port ${PORT}`));
+app.listen(PORT, () => console.log('ComplianceIQ API running on port ' + PORT));
