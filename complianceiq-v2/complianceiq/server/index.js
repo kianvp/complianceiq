@@ -77,14 +77,30 @@ async function fetchFeed(key, config) {
   }
 }
 
+// Persistent store of best known data
+let bestKnownItems = [];
+
 app.get('/api/feed', async (req, res) => {
   const cached = cache.get('feed');
   if (cached) return res.json({ items: cached, cached: true, fetchedAt: cache.get('fetchedAt') });
+
   const results = await Promise.allSettled(Object.entries(FEEDS).map(([key, config]) => fetchFeed(key, config)));
-  const allItems = results
+  const freshItems = results
     .filter(r => r.status === 'fulfilled').flatMap(r => r.value)
     .filter((item, idx, arr) => arr.findIndex(i => i.id === item.id) === idx)
     .sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 60);
+
+  // Merge fresh items with best known — keeps old items if feeds are empty
+  if (freshItems.length > 0) {
+    // Add fresh items, keep any old ones not already present
+    const merged = [...freshItems];
+    for (const old of bestKnownItems) {
+      if (!merged.find(i => i.id === old.id)) merged.push(old);
+    }
+    bestKnownItems = merged.slice(0, 100);
+  }
+
+  const allItems = bestKnownItems.slice(0, 60);
   const fetchedAt = new Date().toISOString();
   cache.set('feed', allItems);
   cache.set('fetchedAt', fetchedAt);
