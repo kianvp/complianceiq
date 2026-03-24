@@ -3,329 +3,142 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ComplianceIQ - Live RBI/SEBI Circulars Tracker</title>
+<title>ComplianceIQ</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
 <style>
-:root{
-  --bg:#0a1a2f;
-  --bg2:#0f2a4a;
-  --card:#132f52;
-  --text:#e6f0ff;
-  --muted:#9bb3d1;
-  --gold:#ffd700;
-  --red:#ff5c5c;
-  --green:#00ff9c;
-}
-*{box-sizing:border-box}
 body{
   margin:0;
   font-family:'Inter',sans-serif;
-  background:linear-gradient(135deg,var(--bg),var(--bg2));
-  color:var(--text);
+  background:linear-gradient(135deg,#0a1a2f,#0f2a4a);
+  color:#e6f0ff;
 }
 header{
   display:flex;
-  align-items:center;
   justify-content:space-between;
-  padding:12px 20px;
+  padding:12px;
   background:#071423;
-  border-bottom:1px solid #1f3b63;
-}
-.live{
-  display:flex;
-  align-items:center;
-  gap:8px;
 }
 .dot{
-  width:10px;height:10px;border-radius:50%;
-  background:var(--green);
+  width:10px;height:10px;background:#00ff9c;border-radius:50%;
   animation:pulse 1.5s infinite;
 }
-@keyframes pulse{
-  0%{opacity:1}
-  50%{opacity:.3}
-  100%{opacity:1}
+@keyframes pulse{0%{opacity:1}50%{opacity:.3}100%{opacity:1}}
+.container{display:flex;height:calc(100vh - 50px)}
+.sidebar,.right{
+  width:220px;background:#071423;padding:10px;
 }
-.search{
-  padding:8px 12px;
-  border-radius:6px;
-  border:none;
-  width:250px;
-}
-.container{
-  display:flex;
-  height:calc(100vh - 60px);
-}
-.sidebar{
-  width:220px;
-  padding:15px;
-  background:#071423;
-  border-right:1px solid #1f3b63;
-}
-.filter{
-  padding:8px;
-  margin:6px 0;
-  cursor:pointer;
-  border-radius:6px;
-}
-.filter:hover{background:#12345a}
-.main{
-  flex:1;
-  overflow-y:auto;
-  padding:15px;
-}
+.main{flex:1;padding:10px;overflow:auto}
 .card{
-  background:var(--card);
-  padding:12px;
-  border-radius:10px;
-  margin-bottom:10px;
-  transition:.2s;
+  background:#132f52;
+  padding:10px;margin-bottom:10px;border-radius:8px;
 }
-.card:hover{transform:scale(1.01)}
-.badge{
-  padding:3px 8px;
-  border-radius:5px;
-  font-size:12px;
-}
-.high{background:var(--red)}
-.med{background:var(--gold);color:black}
+.badge{padding:3px 6px;border-radius:5px;font-size:12px}
+.high{background:#ff5c5c}
+.med{background:gold;color:black}
 .low{background:#3aa3ff}
-.tag{
-  background:#1c4470;
-  padding:3px 6px;
-  border-radius:5px;
-  margin-right:5px;
-  font-size:12px;
-}
-.ai-btn{
-  background:#00aaff;
-  border:none;
-  padding:6px 10px;
-  border-radius:6px;
-  color:white;
-  cursor:pointer;
-}
-.right{
-  width:280px;
-  background:#071423;
-  border-left:1px solid #1f3b63;
-  display:flex;
-  flex-direction:column;
-}
-.chat{
-  flex:1;
-  padding:10px;
-  overflow:auto;
-}
-.input{
-  display:flex;
-  gap:5px;
-  padding:10px;
-}
-.input input{
-  flex:1;
-  padding:8px;
-}
-.chips span{
-  background:#12345a;
-  padding:5px 8px;
-  border-radius:6px;
-  margin:3px;
-  display:inline-block;
-  cursor:pointer;
-}
-@media(max-width:900px){
-  .sidebar,.right{display:none}
-}
 </style>
 </head>
+
 <body>
 
 <header>
-  <div class="live"><div class="dot"></div> LIVE</div>
-  <input class="search" placeholder="Search circulars..." id="search">
+<div style="display:flex;gap:8px;align-items:center">
+<div class="dot"></div> LIVE
+</div>
+<input id="search" placeholder="Search..." style="padding:6px">
 </header>
 
 <div class="container">
-  
-  <div class="sidebar">
-    <h3>Filters</h3>
-    <div class="filter" onclick="setFilter('all')">All Sources</div>
-    <div class="filter" onclick="setFilter('RBI')">RBI</div>
-    <div class="filter" onclick="setFilter('SEBI')">SEBI</div>
-    <div class="filter" onclick="setFilter('KYC')">AML/KYC</div>
-    <div class="filter" onclick="setFilter('Basel')">Basel III</div>
-    <div class="filter" onclick="setFilter('Cyber')">Cybersecurity</div>
-    <div class="filter" onclick="setFilter('SAR')">SAR/STR</div>
-  </div>
+<div class="sidebar">
+<b>Filters</b><br>
+<button onclick="setFilter('all')">All</button>
+<button onclick="setFilter('RBI')">RBI</button>
+<button onclick="setFilter('SEBI')">SEBI</button>
+</div>
 
-  <div class="main" id="feed"></div>
+<div class="main" id="feed"></div>
 
-  <div class="right">
-    <div class="chat" id="chat"></div>
-    <div class="chips">
-      <span onclick="ask('What triggers SAR?')">SAR triggers</span>
-      <span onclick="ask('KYC penalties?')">KYC penalties</span>
-      <span onclick="ask('Structuring rules?')">Structuring</span>
-    </div>
-    <div class="input">
-      <input id="msg" placeholder="Ask AI...">
-      <button onclick="send()">Send</button>
-    </div>
-  </div>
-
+<div class="right">
+<div id="chat"></div>
+<input id="msg"><button onclick="send()">Send</button>
+</div>
 </div>
 
 <script>
-const feeds=[
-  {url:'https://api.allorigins.win/raw?url=https://www.sebi.gov.in/sebirss.xml',source:'SEBI'},
-  {url:'https://api.allorigins.win/raw?url=https://www.rbi.org.in/notifications_rss.xml',source:'RBI'}
-];
+let data=[];
+let filter="all";
 
-let allData=[];
-let currentFilter='all';
-
-async function load(){
-  allData=[];
-  for(const f of feeds){
-    try{
-      let res=await fetch(f.url);
-      let text=await res.text();
-      let xml=new DOMParser().parseFromString(text,"text/xml");
-      let items=[...xml.querySelectorAll("item")];
-      items.forEach(i=>{
-        let title=i.querySelector("title")?.textContent||"";
-        let dateStr=i.querySelector("pubDate")?.textContent||"";
-        let date=new Date(dateStr);
-        if(isNaN(date)) date=new Date();
-        
-        let tags=getTags(title);
-        let severity=getSeverity(title);
-
-        allData.push({
-          title,
-          date:date.toLocaleDateString(),
-          source:f.source,
-          tags,
-          severity
-        });
-      });
-    }catch(e){
-      console.log("RSS failed, using demo");
-      demoData();
-    }
-  }
-  render();
-}
-
-function demoData(){
+function demo(){
+  data=[];
   for(let i=0;i<25;i++){
-    allData.push({
-      title:"KYC compliance update ₹10,00,000 threshold",
+    data.push({
+      title:"KYC update ₹10,00,000 threshold",
       date:new Date().toLocaleDateString(),
-      source:i%2?'RBI':'SEBI',
-      tags:['KYC'],
-      severity:'High'
+      source:i%2?"RBI":"SEBI",
+      severity:"High"
     });
   }
-}
-
-function getTags(t){
-  t=t.toLowerCase();
-  let tags=[];
-  if(t.includes("kyc")) tags.push("KYC");
-  if(t.includes("basel")) tags.push("Basel");
-  if(t.includes("cyber")) tags.push("Cyber");
-  if(t.includes("sar")) tags.push("SAR");
-  return tags;
-}
-
-function getSeverity(t){
-  t=t.toLowerCase();
-  if(t.includes("penalty")||t.includes("fraud")) return "High";
-  if(t.includes("update")) return "Med";
-  return "Low";
-}
-
-function highlight(text){
-  return text.replace(/₹?\d{1,3}(,\d{3})+/g,
-    m=>`<span style="color:gold">${m}</span>`);
 }
 
 function render(){
   let el=document.getElementById("feed");
-  let search=document.getElementById("search").value.toLowerCase();
-
+  let s=document.getElementById("search").value.toLowerCase();
   el.innerHTML="";
-  allData
-    .filter(d=>{
-      if(currentFilter==='all') return true;
-      if(d.source===currentFilter) return true;
-      return d.tags.includes(currentFilter);
-    })
-    .filter(d=>d.title.toLowerCase().includes(search))
-    .slice(0,30)
-    .forEach(d=>{
-      el.innerHTML+=`
-        <div class="card">
-          <div><b>${highlight(d.title)}</b></div>
-          <div>${d.date}</div>
-          <div>
-            <span class="badge ${d.severity.toLowerCase()}">${d.severity}</span>
-          </div>
-          <div>
-            ${d.tags.map(t=>`<span class="tag">${t}</span>`).join("")}
-          </div>
-          <button class="ai-btn" onclick="ask('${d.title}')">Ask AI</button>
-        </div>
-      `;
-    });
+
+  data
+  .filter(d=>filter==="all"||d.source===filter)
+  .filter(d=>d.title.toLowerCase().includes(s))
+  .forEach(d=>{
+    el.innerHTML+=`
+      <div class="card">
+        <b>${d.title}</b><br>
+        ${d.date}<br>
+        <span class="badge ${d.severity.toLowerCase()}">${d.severity}</span>
+      </div>
+    `;
+  });
 }
 
-function setFilter(f){
-  currentFilter=f;
-  render();
-}
+function setFilter(f){filter=f;render()}
+document.getElementById("search").oninput=render;
 
-document.getElementById("search").addEventListener("input",render);
-
-function ask(q){
-  document.getElementById("msg").value=q;
-}
-
-async function send(){
-  let input=document.getElementById("msg");
-  let chat=document.getElementById("chat");
-  let q=input.value;
-  if(!q) return;
-
-  chat.innerHTML+=`<div><b>You:</b> ${q}</div>`;
-  
-  let reply="(Demo AI) This relates to compliance rules and reporting obligations.";
-  
+async function loadRSS(){
   try{
-    let res=await fetch("https://api.groq.com/openai/v1/chat/completions",{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "Authorization":"Bearer YOUR_GROQ_API_KEY"
-      },
-      body:JSON.stringify({
-        model:"llama3-8b-8192",
-        messages:[{role:"user",content:q}]
-      })
-    });
-    let data=await res.json();
-    reply=data.choices?.[0]?.message?.content||reply;
-  }catch(e){}
+    let url="https://api.allorigins.win/raw?url=https://www.rbi.org.in/notifications_rss.xml";
+    let res=await fetch(url);
+    let txt=await res.text();
 
-  chat.innerHTML+=`<div><b>AI:</b> ${reply}</div>`;
-  input.value="";
-  chat.scrollTop=chat.scrollHeight;
+    let xml=new DOMParser().parseFromString(txt,"text/xml");
+    let items=[...xml.querySelectorAll("item")];
+
+    if(items.length===0) return;
+
+    data=items.map(i=>({
+      title:i.querySelector("title")?.textContent||"",
+      date:new Date(i.querySelector("pubDate")?.textContent||Date.now()).toLocaleDateString(),
+      source:"RBI",
+      severity:"Med"
+    }));
+
+    render();
+
+  }catch(e){
+    console.log("RSS failed");
+  }
 }
 
-load();
-setInterval(load,300000);
+function send(){
+  let chat=document.getElementById("chat");
+  let q=document.getElementById("msg").value;
+  chat.innerHTML+=`<div>You: ${q}</div>`;
+  chat.innerHTML+=`<div>AI: Demo response</div>`;
+}
+
+demo();       // always load instantly
+render();
+loadRSS();    // then try real data
+setInterval(loadRSS,300000);
 </script>
 
 </body>
