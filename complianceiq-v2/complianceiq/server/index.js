@@ -56,10 +56,23 @@ function scoreSeverity(title, summary) {
   return Math.min(10, Math.max(1, score));
 }
 
+const EXCLUDE_KEYWORDS = [
+  'prohibitory order', 'adjudication order', 'recovery certificate',
+  'release order', 'cancellation of recovery', 'notice of demand',
+  'court', 'tribunal', 'appeal', 'writ', 'interim order',
+  'consent order', 'settlement', 'disgorgement', 'debarment',
+  'takes charge', 'appointed as', 'sad proceedings'
+];
+
+function isRealCircular(title) {
+  const t = (title || '').toLowerCase();
+  return !EXCLUDE_KEYWORDS.some(kw => t.includes(kw));
+}
+
 async function fetchFeed(key, config) {
   try {
     const feed = await parser.parseURL(config.url);
-    return (feed.items || []).slice(0, 20).map(item => ({
+    return (feed.items || []).filter(item => isRealCircular(item.title)).slice(0, 20).map(item => ({
       id: item.guid || item.link || item.title,
       title: item.title || 'Untitled',
       summary: item.contentSnippet || item.summary || '',
