@@ -11,7 +11,7 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 const FEEDS = {
-  sebi_circulars: { url: 'https://www.sebi.gov.in/sebi_data/rss/sebi_circular_rss.xml', label: 'SEBI', category: 'Circular', color: 'green' },
+  sebi_circulars: { url: 'https://www.sebi.gov.in/sebirss.xml', label: 'SEBI', category: 'Circular', color: 'green' },
   rbi_circulars: { url: 'https://www.rbi.org.in/notifications_rss.xml', label: 'RBI', category: 'Circular', color: 'blue' },
 };
 
@@ -40,8 +40,11 @@ const EXCLUDE_KEYWORDS = [
   'debarment', 'disgorgement', 'writ', 'tribunal'
 ];
 
-function isRealCircular(title) {
+function isRealCircular(title, link) {
   const t = (title || '').toLowerCase();
+  const l = (link || '').toLowerCase();
+  // For SEBI, only keep items from the /legal/circulars/ path
+  if (l.includes('sebi.gov.in') && !l.includes('/legal/circulars/') && !l.includes('/legal/master-circulars/')) return false;
   return !EXCLUDE_KEYWORDS.some(kw => t.includes(kw));
 }
 
@@ -70,7 +73,7 @@ async function fetchFeed(key, config) {
   try {
     const feed = await parser.parseURL(config.url);
     return (feed.items || [])
-      .filter(item => isRealCircular(item.title))
+      .filter(item => isRealCircular(item.title, item.link))
       .slice(0, 25)
       .map(item => ({
         id: item.guid || item.link || item.title,
