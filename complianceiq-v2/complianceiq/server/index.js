@@ -29,7 +29,21 @@ const TAG_RULES = [
   { keywords: ['interest rate', 'repo rate', 'monetary policy', 'MPC'], tag: 'Monetary Policy' },
   { keywords: ['payment', 'UPI', 'NEFT', 'RTGS', 'digital payment'], tag: 'Payments' },
   { keywords: ['NBFC', 'non-banking'], tag: 'NBFC' },
+  { keywords: ['mutual fund', 'scheme', 'NAV', 'AIF'], tag: 'Funds' },
+  { keywords: ['stock broker', 'clearing', 'settlement', 'derivative'], tag: 'Markets' },
 ];
+
+const EXCLUDE_KEYWORDS = [
+  'prohibitory order', 'adjudication order', 'recovery certificate',
+  'release order', 'cancellation of recovery', 'notice of demand',
+  'takes charge', 'appointed as', 'sad proceedings', 'consent order',
+  'debarment', 'disgorgement', 'writ', 'tribunal'
+];
+
+function isRealCircular(title) {
+  const t = (title || '').toLowerCase();
+  return !EXCLUDE_KEYWORDS.some(kw => t.includes(kw));
+}
 
 function classifyTags(title, summary) {
   title = title || ''; summary = summary || '';
@@ -41,54 +55,41 @@ function classifyTags(title, summary) {
   return tags.length ? tags : ['General'];
 }
 
-// Rule-based severity scorer (instant, no AI needed)
 function scoreSeverity(title, summary) {
   const text = (title + ' ' + summary).toLowerCase();
-  let score = 3;
-  const critical = ['penalty', 'penalt', 'deadline', 'immediate', 'urgent', 'mandatory', 'compulsory', 'violation', 'action must', 'comply by', 'enforcement', 'suspension', 'cancellation', 'prohibitory', 'adjudication'];
-  const high = ['amendment', 'revised', 'new circular', 'master direction', 'framework', 'guidelines', 'regulation', 'compliance', 'aml', 'kyc', 'pmla', 'basel', 'capital', 'liquidity', 'pca'];
-  const low = ['press release', 'appointment', 'takes charge', 'seminar', 'conference', 'awareness', 'clarification'];
-  if (critical.some(w => text.includes(w))) score = 8 + Math.floor(Math.random() * 2);
-  else if (high.some(w => text.includes(w))) score = 5 + Math.floor(Math.random() * 3);
-  else if (low.some(w => text.includes(w))) score = 1 + Math.floor(Math.random() * 2);
-  return Math.min(10, Math.max(1, score));
-}
-
-const EXCLUDE_KEYWORDS = [
-  'prohibitory order', 'adjudication order', 'recovery certificate',
-  'release order', 'cancellation of recovery', 'notice of demand',
-  'court', 'tribunal', 'appeal', 'writ', 'interim order',
-  'consent order', 'settlement', 'disgorgement', 'debarment',
-  'takes charge', 'appointed as', 'sad proceedings'
-];
-
-function isRealCircular(title) {
-  const t = (title || '').toLowerCase();
-  return !EXCLUDE_KEYWORDS.some(kw => t.includes(kw));
+  const critical = ['penalty', 'deadline', 'immediate', 'mandatory', 'enforcement', 'suspension', 'cancellation', 'comply by'];
+  const high = ['amendment', 'revised', 'new circular', 'master direction', 'framework', 'guidelines', 'regulation', 'aml', 'kyc', 'pmla', 'basel', 'capital', 'liquidity', 'pca'];
+  const low = ['press release', 'appointment', 'takes charge', 'seminar', 'clarification'];
+  if (critical.some(w => text.includes(w))) return 8 + Math.floor(Math.random() * 2);
+  if (high.some(w => text.includes(w))) return 5 + Math.floor(Math.random() * 3);
+  if (low.some(w => text.includes(w))) return 1 + Math.floor(Math.random() * 2);
+  return 3;
 }
 
 async function fetchFeed(key, config) {
   try {
     const feed = await parser.parseURL(config.url);
-    return (feed.items || []).filter(item => isRealCircular(item.title)).slice(0, 20).map(item => ({
-      id: item.guid || item.link || item.title,
-      title: item.title || 'Untitled',
-      summary: item.contentSnippet || item.summary || '',
-      link: item.link || '',
-      date: item.pubDate || item.isoDate || new Date().toISOString(),
-      source: config.label,
-      category: config.category,
-      color: config.color,
-      tags: classifyTags(item.title, item.contentSnippet || ''),
-      severity: scoreSeverity(item.title, item.contentSnippet || ''),
-    }));
+    return (feed.items || [])
+      .filter(item => isRealCircular(item.title))
+      .slice(0, 25)
+      .map(item => ({
+        id: item.guid || item.link || item.title,
+        title: item.title || 'Untitled',
+        summary: item.contentSnippet || item.summary || '',
+        link: item.link || '',
+        date: item.pubDate || item.isoDate || new Date().toISOString(),
+        source: config.label,
+        category: config.category,
+        color: config.color,
+        tags: classifyTags(item.title, item.contentSnippet || ''),
+        severity: scoreSeverity(item.title, item.contentSnippet || ''),
+      }));
   } catch (err) {
     console.error('Failed to fetch ' + key + ':', err.message);
     return [];
   }
 }
 
-// Persistent store of best known data
 let bestKnownItems = [];
 
 app.get('/api/feed', async (req, res) => {
@@ -101,9 +102,7 @@ app.get('/api/feed', async (req, res) => {
     .filter((item, idx, arr) => arr.findIndex(i => i.id === item.id) === idx)
     .sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 60);
 
-  // Merge fresh items with best known — keeps old items if feeds are empty
   if (freshItems.length > 0) {
-    // Add fresh items, keep any old ones not already present
     const merged = [...freshItems];
     for (const old of bestKnownItems) {
       if (!merged.find(i => i.id === old.id)) merged.push(old);
@@ -123,7 +122,6 @@ app.post('/api/feed/refresh', (req, res) => {
   res.json({ ok: true });
 });
 
-// ── AI Chat endpoint (Groq) ───────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   const { messages, circulars } = req.body;
   if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'messages required' });
@@ -135,28 +133,24 @@ app.post('/api/chat', async (req, res) => {
     ? 'Live circulars on screen:\n' + circulars.slice(0, 15).map(i => '- ' + i.source + ': ' + i.title + ' (' + i.tags.join(', ') + ')').join('\n')
     : '';
 
+  const lastMessage = messages[messages.length - 1].content;
   const systemPrompt = 'You are a senior banking compliance officer in India with deep expertise in RBI regulations, PMLA, Basel III, KYC/AML, SEBI, and FEMA. Answer clearly and practically. Be specific with numbers, thresholds, deadlines. Keep answers under 200 words. Plain prose only.\n\n' + circularContext;
 
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + GROQ_API_KEY
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_API_KEY },
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'system', content: systemPrompt }, ...messages],
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: lastMessage }],
         max_tokens: 500
       })
     });
     const data = await response.json();
-    console.log('Groq response:', JSON.stringify(data).slice(0, 200));
     const reply = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
     if (reply) { res.json({ reply }); }
     else { res.json({ error: 'Unexpected: ' + JSON.stringify(data).slice(0, 200) }); }
   } catch (err) {
-    console.error('AI error:', err);
     res.status(500).json({ error: 'AI request failed: ' + err.message });
   }
 });
