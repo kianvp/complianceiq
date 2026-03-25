@@ -1,787 +1,966 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ComplianceIQ — Live RBI / SEBI Circulars</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Inter', sans-serif;
-      background: radial-gradient(circle at top, #1f2937 0, #020617 55%);
-      color: #e5e7eb;
-      min-height: 100vh;
-    }
-    .page {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 20px;
-      display: grid;
-      grid-template-columns: 260px 1fr 380px;
-      gap: 24px;
-    }
-    .header {
-      grid-column: 1 / -1;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 0 18px;
-      border-bottom: 1px solid #334155;
-      margin-bottom: 10px;
-    }
-    .title-block h1 {
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-    }
-    .title-block p {
-      font-size: 13px;
-      color: #9ca3af;
-      margin-top: 3px;
-    }
-    .live-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 14px;
-      border-radius: 999px;
-      background: rgba(16,185,129,0.12);
-      border: 1px solid rgba(16,185,129,0.7);
-      font-size: 12px;
-      color: #6ee7b7;
-      font-weight: 600;
-    }
-    .live-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: #22c55e;
-      box-shadow: 0 0 10px rgba(34,197,94,0.7);
-      animation: pulse 1.6s infinite;
-    }
-    @keyframes pulse {
-      0% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.35); opacity: 0.4; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    .search-input {
-      width: 280px;
-      padding: 9px 14px;
-      border-radius: 999px;
-      border: 1px solid #4b5563;
-      background: rgba(15,23,42,0.8);
-      color: #e5e7eb;
-      font-size: 14px;
-    }
-    .search-input::placeholder { color: #6b7280; }
-    .sidebar {
-      background: rgba(15,23,42,0.9);
-      border-radius: 18px;
-      padding: 18px;
-      border: 1px solid #374151;
-      height: fit-content;
-      max-height: calc(100vh - 120px);
-      overflow-y: auto;
-    }
-    .sidebar h3 {
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 10px;
-    }
-    .sidebar p {
-      font-size: 12px;
-      color: #9ca3af;
-      margin-bottom: 14px;
-    }
-    .filter-button {
-      width: 100%;
-      border-radius: 999px;
-      border: 1px solid #4b5563;
-      background: transparent;
-      color: #d1d5db;
-      font-size: 13px;
-      padding: 8px 12px;
-      margin-bottom: 6px;
-      text-align: left;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      transition: all 0.18s ease;
-    }
-    .filter-button span.label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .filter-button span.count-pill {
-      font-size: 11px;
-      padding: 2px 7px;
-      border-radius: 999px;
-      background: rgba(31,41,55,0.9);
-      color: #9ca3af;
-    }
-    .filter-button.active {
-      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-      border-color: #60a5fa;
-      color: #f9fafb;
-      box-shadow: 0 8px 20px rgba(37,99,235,0.45);
-    }
-    .filter-button.active .count-pill {
-      background: rgba(15,23,42,0.9);
-      color: #f9fafb;
-    }
-    .main {
-      background: rgba(15,23,42,0.85);
-      border-radius: 18px;
-      border: 1px solid #374151;
-      padding: 20px 18px;
-      max-height: calc(100vh - 120px);
-      overflow-y: auto;
-    }
-    .status-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 12px;
-      color: #9ca3af;
-      margin-bottom: 14px;
-    }
-    .status-bar span strong {
-      color: #e5e7eb;
-    }
-    .circular-card {
-      background: linear-gradient(135deg, rgba(31,41,55,0.9), rgba(15,23,42,0.95));
-      border-radius: 16px;
-      padding: 14px 14px 12px;
-      border: 1px solid #374151;
-      margin-bottom: 10px;
-      cursor: pointer;
-      transition: all 0.18s ease;
-      position: relative;
-      overflow: hidden;
-    }
-    .circular-card:hover {
-      border-color: #60a5fa;
-      box-shadow: 0 14px 26px rgba(15,23,42,0.7);
-      transform: translateY(-2px);
-    }
-    .circular-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 4px;
-    }
-    .source-pill {
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      font-weight: 600;
-    }
-    .source-sebi {
-      background: rgba(59,130,246,0.18);
-      border: 1px solid rgba(59,130,246,0.7);
-      color: #93c5fd;
-    }
-    .source-rbi {
-      background: rgba(249,115,22,0.18);
-      border: 1px solid rgba(249,115,22,0.7);
-      color: #fed7aa;
-    }
-    .severity-pill {
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      font-weight: 700;
-    }
-    .severity-high { background: rgba(248,113,113,0.15); border: 1px solid #f97373; color: #fecaca; }
-    .severity-medium { background: rgba(251,191,36,0.16); border: 1px solid #facc15; color: #fef3c7; }
-    .severity-low { background: rgba(34,197,94,0.16); border: 1px solid #22c55e; color: #bbf7d0; }
-    .circular-title {
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 4px;
-      color: #e5e7eb;
-    }
-    .circular-meta {
-      font-size: 11px;
-      color: #9ca3af;
-      margin-bottom: 6px;
-    }
-    .circular-meta span.dot {
-      margin: 0 6px;
-      opacity: 0.5;
-    }
-    .tag-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 6px;
-    }
-    .tag-chip {
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: rgba(15,23,42,0.9);
-      border: 1px solid #4b5563;
-      color: #cbd5f5;
-    }
-    .summary-text {
-      font-size: 12px;
-      color: #9ca3af;
-      line-height: 1.45;
-      margin-bottom: 6px;
-    }
-    .summary-text b {
-      color: #facc15;
-      font-weight: 600;
-    }
-    .card-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 4px;
-    }
-    .link-hint {
-      font-size: 11px;
-      color: #64748b;
-    }
-    .ask-ai {
-      font-size: 11px;
-      padding: 5px 10px;
-      border-radius: 999px;
-      border: none;
-      background: linear-gradient(135deg, #8b5cf6, #6366f1);
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .right-panel {
-      background: rgba(15,23,42,0.96);
-      border-radius: 18px;
-      border: 1px solid #374151;
-      padding: 18px;
-      max-height: calc(100vh - 120px);
-      display: flex;
-      flex-direction: column;
-    }
-    .right-panel h3 {
-      font-size: 15px;
-      margin-bottom: 8px;
-    }
-    .right-panel small {
-      font-size: 11px;
-      color: #9ca3af;
-    }
-    .chat-window {
-      flex: 1;
-      margin-top: 10px;
-      padding: 10px;
-      border-radius: 12px;
-      background: rgba(15,23,42,0.9);
-      border: 1px solid #334155;
-      overflow-y: auto;
-      font-size: 12px;
-    }
-    .chat-bubble {
-      padding: 8px 10px;
-      border-radius: 8px;
-      margin-bottom: 6px;
-    }
-    .chat-user {
-      background: rgba(16,185,129,0.15);
-      border: 1px solid rgba(16,185,129,0.8);
-      color: #a7f3d0;
-      align-self: flex-end;
-    }
-    .chat-ai {
-      background: rgba(37,99,235,0.14);
-      border: 1px solid rgba(59,130,246,0.8);
-      color: #bfdbfe;
-    }
-    .chat-input-row {
-      display: flex;
-      gap: 6px;
-      margin-top: 10px;
-    }
-    .chat-input-row input {
-      flex: 1;
-      padding: 8px 10px;
-      border-radius: 999px;
-      border: 1px solid #4b5563;
-      background: rgba(15,23,42,0.9);
-      color: #e5e7eb;
-      font-size: 12px;
-    }
-    .chat-input-row button {
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: none;
-      background: linear-gradient(135deg, #22c55e, #16a34a);
-      color: white;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .chips {
-      margin-top: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-    .chip {
-      font-size: 11px;
-      padding: 4px 8px;
-      border-radius: 999px;
-      border: 1px solid #4b5563;
-      background: rgba(15,23,42,0.9);
-      color: #e5e7eb;
-      cursor: pointer;
-    }
-    .empty-state {
-      text-align: center;
-      font-size: 12px;
-      color: #9ca3af;
-      margin-top: 40px;
-    }
-    .loader {
-      width: 20px;
-      height: 20px;
-      border-radius: 999px;
-      border: 2px solid #4b5563;
-      border-top-color: #60a5fa;
-      animation: spin 0.9s linear infinite;
-      margin: 0 auto 10px;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    @media (max-width: 1140px) {
-      .page { grid-template-columns: 1fr; }
-      .sidebar { order: 1; }
-      .main { order: 2; }
-      .right-panel { order: 3; margin-bottom: 40px; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComplianceIQ — Live Banking Regulatory Feed</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --cream: #f5f0e8;
+  --parchment: #ede8dc;
+  --ink: #1a1610;
+  --ink-mid: #4a4030;
+  --ink-light: #8a7a60;
+  --ink-faint: #c8b89a;
+  --gold: #c8860a;
+  --gold-light: #e8a020;
+  --gold-dim: rgba(200,134,10,0.12);
+  --red: #b83030;
+  --red-dim: rgba(184,48,48,0.1);
+  --green: #2a6040;
+  --green-dim: rgba(42,96,64,0.1);
+  --blue: #1a4060;
+  --blue-dim: rgba(26,64,96,0.1);
+  --border: rgba(26,22,16,0.12);
+  --shadow: 0 4px 24px rgba(26,22,16,0.1);
+  --serif: 'Playfair Display', serif;
+  --sans: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--sans);
+  min-height: 100vh;
+}
+
+/* Header */
+header {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+}
+
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.logo-name {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--cream);
+}
+
+.logo-name span { color: var(--gold-light); }
+
+.logo-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 2px;
+  border-left: 1px solid rgba(255,255,255,0.15);
+  padding-left: 10px;
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.live-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #666;
+  transition: background 0.3s;
+}
+
+.live-dot.live { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; animation: livePulse 2s ease-in-out infinite; }
+.live-dot.error { background: var(--red); }
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.last-updated {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 0.5px;
+}
+
+.refresh-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--ink-faint);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover { border-color: var(--gold); color: var(--gold-light); }
+.refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Layout */
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 32px;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 28px;
+}
+
+/* Sidebar filters */
+.sidebar {
+  position: sticky;
+  top: 80px;
+  align-self: start;
+}
+
+.filter-section { margin-bottom: 28px; }
+
+.filter-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-light);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-title::before {
+  content: '';
+  width: 16px;
+  height: 1px;
+  background: var(--gold);
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 12px;
+  background: white;
+  border: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink-mid);
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.filter-btn:hover { border-left-color: var(--gold-light); background: var(--gold-dim); }
+.filter-btn.active { border-left-color: var(--gold); background: var(--gold-dim); color: var(--ink); font-weight: 500; }
+
+.filter-count {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: var(--parchment);
+  padding: 2px 7px;
+  border-radius: 10px;
+  color: var(--ink-light);
+}
+
+.filter-btn.active .filter-count { background: var(--gold); color: var(--ink); }
+
+.search-box {
+  width: 100%;
+  padding: 10px 12px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+  margin-bottom: 20px;
+}
+
+.search-box:focus { border-color: var(--gold); }
+.search-box::placeholder { color: var(--ink-faint); }
+
+/* Feed */
+.feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.feed-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-light);
+}
+
+.feed-list { display: flex; flex-direction: column; gap: 12px; }
+
+/* Feed item */
+.feed-item {
+  background: white;
+  border: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  border-radius: 6px;
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: var(--shadow);
+  animation: slideIn 0.3s ease forwards;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.feed-item:hover { transform: translateX(3px); box-shadow: 0 6px 28px rgba(26,22,16,0.14); }
+.feed-item.rbi { border-left-color: #1a4060; }
+.feed-item.sebi { border-left-color: #2a6040; }
+.feed-item.expanded { border-color: var(--gold); border-left-color: var(--gold); }
+
+.feed-item-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.source-pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.source-rbi { background: var(--blue-dim); color: var(--blue); }
+.source-sebi { background: var(--green-dim); color: var(--green); }
+
+.cat-pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  background: var(--parchment);
+  color: var(--ink-light);
+  text-transform: uppercase;
+}
+
+.tag-pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  padding: 3px 7px;
+  border-radius: 10px;
+  background: var(--gold-dim);
+  color: var(--gold);
+  border: 1px solid rgba(200,134,10,0.2);
+  text-transform: uppercase;
+}
+
+.feed-item-date {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+
+.feed-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
+.feed-item-summary {
+  font-size: 12px;
+  color: var(--ink-light);
+  line-height: 1.6;
+  display: none;
+}
+
+.feed-item.expanded .feed-item-summary { display: block; }
+
+.feed-item-actions {
+  display: none;
+  margin-top: 14px;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.feed-item.expanded .feed-item-actions { display: flex; }
+
+.action-link {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--gold);
+  text-decoration: none;
+  border: 1px solid rgba(200,134,10,0.3);
+  padding: 5px 12px;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+
+.action-link:hover { background: var(--gold-dim); }
+
+.ask-ai-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--ink);
+  color: var(--gold-light);
+  border: none;
+  padding: 6px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.5px;
+}
+
+.ask-ai-btn:hover { background: #2a2218; }
+
+/* AI answer inline */
+.inline-answer {
+  margin-top: 14px;
+  background: var(--parchment);
+  border-radius: 4px;
+  padding: 16px;
+  display: none;
+}
+
+.inline-answer.visible { display: block; }
+
+.inline-answer-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.inline-answer-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-mid);
+}
+
+/* Skeleton loader */
+.skeleton {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 18px 20px;
+  margin-bottom: 12px;
+}
+
+.skel-line {
+  background: linear-gradient(90deg, var(--parchment) 25%, var(--cream) 50%, var(--parchment) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 3px;
+  height: 12px;
+  margin-bottom: 8px;
+}
+
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+.skel-line.short { width: 40%; }
+.skel-line.medium { width: 70%; }
+.skel-line.long { width: 90%; }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--ink-light);
+}
+
+.empty-state p { font-family: var(--mono); font-size: 13px; }
+
+/* Demo banner */
+.demo-banner {
+  background: var(--gold-dim);
+  border: 1px solid rgba(200,134,10,0.25);
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-mid);
+  margin-bottom: 20px;
+  display: none;
+}
+
+.demo-banner.visible { display: block; }
+.demo-banner strong { color: var(--gold); }
+
+@media (max-width: 768px) {
+  .page { grid-template-columns: 1fr; padding: 12px; gap: 16px; }
+  .sidebar { position: static; }
+  .header-inner { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+  .logo-sub { display: none; }
+  .last-updated { display: none; }
+  .live-indicator { font-size: 10px; }
+  .refresh-btn { padding: 4px 8px; font-size: 9px; }
+  .feed-item { padding: 14px 14px; }
+  .feed-item-title { font-size: 13px; }
+  .feed-item-top { gap: 6px; }
+  .feed-item-date { margin-left: 0; width: 100%; margin-top: 4px; }
+  .chat-panel { width: 100vw; }
+  .chat-btn { bottom: 16px; right: 16px; width: 48px; height: 48px; font-size: 18px; }
+  .filter-btn { font-size: 12px; padding: 8px 10px; }
+  .search-box { font-size: 13px; }
+  .source-pill, .cat-pill, .tag-pill, .sev-badge { font-size: 8px; padding: 2px 6px; }
+  table { font-size: 12px; }
+}
+
+@media (max-width: 480px) {
+  .page { padding: 8px; }
+  .feed-item { padding: 12px; }
+  .feed-item-title { font-size: 12px; }
+  .header-inner { padding: 10px 12px; }
+  .logo-name { font-size: 18px; }
+}
+
+/* ── Chatbot ── */
+.chat-btn {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 2px solid var(--gold);
+  color: var(--gold-light);
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(26,22,16,0.25);
+  transition: all 0.2s;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.chat-btn:hover { transform: scale(1.08); }
+
+.chat-panel {
+  position: fixed;
+  top: 0; right: 0;
+  width: 380px;
+  height: 100vh;
+  background: white;
+  border-left: 1px solid var(--border);
+  box-shadow: -8px 0 40px rgba(26,22,16,0.12);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+.chat-panel.open { transform: translateX(0); }
+
+.chat-header {
+  background: var(--ink);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.chat-header-info { flex: 1; }
+.chat-header-title { font-family: var(--serif); font-size: 16px; font-weight: 700; color: var(--cream); }
+.chat-header-title span { color: var(--gold-light); }
+.chat-header-sub { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); letter-spacing: 1px; margin-top: 2px; }
+.chat-close { background: transparent; border: none; color: var(--ink-faint); font-size: 20px; cursor: pointer; transition: color 0.15s; }
+.chat-close:hover { color: var(--cream); }
+
+.chat-context-bar {
+  background: var(--gold-dim);
+  border-bottom: 1px solid rgba(200,134,10,0.2);
+  padding: 8px 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--gold);
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-msg { display: flex; flex-direction: column; gap: 4px; animation: msgIn 0.2s ease forwards; }
+@keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.chat-msg.user { align-items: flex-end; }
+.chat-msg.ai { align-items: flex-start; }
+.chat-bubble { max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.6; }
+.chat-msg.user .chat-bubble { background: var(--ink); color: var(--cream); border-bottom-right-radius: 3px; }
+.chat-msg.ai .chat-bubble { background: var(--parchment); color: var(--ink-mid); border-bottom-left-radius: 3px; }
+.chat-msg-label { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; color: var(--ink-faint); text-transform: uppercase; }
+
+.chat-typing { display: flex; gap: 4px; padding: 12px 14px; background: var(--parchment); border-radius: 12px; border-bottom-left-radius: 3px; width: fit-content; }
+.chat-typing span { width: 6px; height: 6px; background: var(--ink-faint); border-radius: 50%; animation: typingPulse 1.2s ease-in-out infinite; }
+.chat-typing span:nth-child(2) { animation-delay: 0.2s; }
+.chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingPulse { 0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+
+.chat-quick { padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.chat-quick-chip { font-family: var(--mono); font-size: 10px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; color: var(--ink-light); cursor: pointer; transition: all 0.15s; background: white; }
+.chat-quick-chip:hover { border-color: var(--gold); color: var(--gold); }
+
+.chat-input-row { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.chat-input { flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-family: var(--sans); font-size: 13px; color: var(--ink); outline: none; transition: border-color 0.2s; background: var(--cream); }
+.chat-input:focus { border-color: var(--gold); }
+.chat-input::placeholder { color: var(--ink-faint); }
+.chat-send { background: var(--ink); color: var(--gold-light); border: none; border-radius: 6px; padding: 10px 14px; font-size: 16px; cursor: pointer; transition: all 0.15s; }
+.chat-send:hover { background: #2a2218; }
+.chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+
+/* Severity badge */
+.sev-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+}
+.sev-critical { background: rgba(184,48,48,0.15); color: #b83030; border: 1px solid rgba(184,48,48,0.3); }
+.sev-high     { background: rgba(200,134,10,0.15); color: #c8860a; border: 1px solid rgba(200,134,10,0.3); }
+.sev-low      { background: rgba(42,96,64,0.12);  color: #2a6040; border: 1px solid rgba(42,96,64,0.25); }
+
+</style>
 </head>
 <body>
-  <div class="page">
-    <header class="header">
-      <div class="title-block">
-        <h1>ComplianceIQ — Banking Circular Radar</h1>
-        <p>Live RBI / SEBI <strong>circulars</strong> only — auto-tagged and AI-ready for your dad’s compliance work.</p>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div class="live-pill">
-          <div class="live-dot"></div>
-          LIVE circular feed
-          <span id="lastUpdated" style="opacity:0.7;"></span>
-        </div>
-        <input id="searchBox" class="search-input" placeholder="Search circulars (KYC, SAR, Basel…)">
-      </div>
-    </header>
 
-    <aside class="sidebar">
-      <h3>Filters</h3>
-      <p>These are all <b>regulatory circulars</b>, not court cases. Use filters to narrow by source or theme.</p>
-      <button class="filter-button active" data-filter="all">
-        <span class="label">All circulars</span>
-        <span class="count-pill" id="count-all">0</span>
-      </button>
-      <button class="filter-button" data-filter="SEBI">
-        <span class="label">SEBI circulars</span>
-        <span class="count-pill" id="count-sebi">0</span>
-      </button>
-      <button class="filter-button" data-filter="RBI">
-        <span class="label">RBI notifications</span>
-        <span class="count-pill" id="count-rbi">0</span>
-      </button>
-      <button class="filter-button" data-filter="AML">
-        <span class="label">AML / KYC</span>
-        <span class="count-pill" id="count-aml">0</span>
-      </button>
-      <button class="filter-button" data-filter="Basel">
-        <span class="label">Basel / Capital</span>
-        <span class="count-pill" id="count-basel">0</span>
-      </button>
-      <button class="filter-button" data-filter="Cyber">
-        <span class="label">Cyber / Tech risk</span>
-        <span class="count-pill" id="count-cyber">0</span>
-      </button>
-      <button class="filter-button" data-filter="SAR">
-        <span class="label">SAR / STR topics</span>
-        <span class="count-pill" id="count-sar">0</span>
-      </button>
-    </aside>
-
-    <main class="main">
-      <div class="status-bar">
-        <span>Showing <strong id="visibleCount">0</strong> circulars</span>
-        <span>Source: SEBI RSS (<code>sebirss.xml</code>) & RBI notifications RSS (<code>notifications_rss.xml</code>)</span>
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-name">Compliance<span>IQ</span></div>
+      <div class="logo-sub">Live Regulatory Feed</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div class="live-indicator">
+        <div class="live-dot" id="liveDot"></div>
+        <span id="liveStatus">Connecting...</span>
       </div>
-      <div id="loadingState" class="empty-state">
-        <div class="loader"></div>
-        Pulling latest circulars from SEBI and RBI feeds…
-      </div>
-      <div id="cardsContainer" style="display:none;"></div>
-      <div id="emptyState" class="empty-state" style="display:none;">
-        No circulars match your filters/search. Try clearing filters or searching for something broader.
-      </div>
-    </main>
-
-    <aside class="right-panel">
-      <h3>Ask AI like a compliance officer</h3>
-      <small>Ask about any circular, SAR triggers, KYC penalties, or Basel norms. Answers are India-banking focused.</small>
-      <div id="chatWindow" class="chat-window"></div>
-      <div class="chat-input-row">
-        <input id="chatInput" placeholder="Ask: “What triggers a SAR under PMLA?”">
-        <button id="chatSend">Send</button>
-      </div>
-      <div class="chips">
-        <button class="chip" data-q="What triggers a SAR filing for Indian banks?">SAR triggers</button>
-        <button class="chip" data-q="What are RBI expectations on transaction monitoring alerts?">Alert expectations</button>
-        <button class="chip" data-q="Explain KYC penalties and thresholds in India.">KYC penalties</button>
-        <button class="chip" data-q="How do Basel III LCR rules affect Indian banks?">Basel LCR</button>
-      </div>
-    </aside>
+      <div class="last-updated" id="lastUpdated"></div>
+      <button class="refresh-btn" id="refreshBtn" onclick="refreshFeed()">↻ REFRESH</button>
+    </div>
   </div>
+</header>
 
-  <script>
-    // Feeds: pure circulars/notifications, no courts
-    const FEEDS = {
-      SEBI: 'https://api.allorigins.win/raw?url=https://www.sebi.gov.in/sebirss.xml',
-      RBI:  'https://api.allorigins.win/raw?url=https://www.rbi.org.in/notifications_rss.xml'
-    }; // [web:12][web:13]
+<div class="page">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <input class="search-box" type="text" id="searchBox" placeholder="Search circulars..." oninput="filterFeed()">
 
-    let allCirculars = [];
-    let currentFilter = 'all';
+    <div class="filter-section">
+      <div class="filter-title">Source</div>
+      <button class="filter-btn active" data-filter="source" data-value="all" onclick="setFilter('source','all',this)">
+        All Sources <span class="filter-count" id="count-all">—</span>
+      </button>
+      <button class="filter-btn" data-filter="source" data-value="RBI" onclick="setFilter('source','RBI',this)">
+        🏦 RBI <span class="filter-count" id="count-rbi">—</span>
+      </button>
+      <button class="filter-btn" data-filter="source" data-value="SEBI" onclick="setFilter('source','SEBI',this)">
+        📊 SEBI <span class="filter-count" id="count-sebi">—</span>
+      </button>
+    </div>
 
-    const cardsContainer = document.getElementById('cardsContainer');
-    const loadingState = document.getElementById('loadingState');
-    const emptyState   = document.getElementById('emptyState');
-    const searchBox    = document.getElementById('searchBox');
-    const visibleCount = document.getElementById('visibleCount');
-    const lastUpdated  = document.getElementById('lastUpdated');
+    <div class="filter-section">
+      <div class="filter-title">Topic</div>
+      <div id="topicFilters"></div>
+    </div>
+  </aside>
 
-    document.addEventListener('DOMContentLoaded', () => {
-      wireFilters();
-      wireChat();
-      fetchFeeds();
-      setInterval(fetchFeeds, 5 * 60 * 1000);
+  <!-- Feed -->
+  <main>
+    <div class="demo-banner" id="demoBanner">
+      <strong>⚠ Demo Mode</strong> — Backend server not detected. Showing sample data.
+      To go live, deploy <code>server/</code> and set <code>API_URL</code> in this file.
+    </div>
+
+    <div class="feed-header">
+      <div class="feed-count" id="feedCount">Loading...</div>
+    </div>
+
+    <div class="feed-list" id="feedList">
+      <!-- Skeletons -->
+      <div class="skeleton"><div class="skel-line short"></div><div class="skel-line long"></div><div class="skel-line medium"></div></div>
+      <div class="skeleton"><div class="skel-line short"></div><div class="skel-line long"></div><div class="skel-line medium"></div></div>
+      <div class="skeleton"><div class="skel-line short"></div><div class="skel-line long"></div><div class="skel-line medium"></div></div>
+      <div class="skeleton"><div class="skel-line short"></div><div class="skel-line long"></div><div class="skel-line medium"></div></div>
+      <div class="skeleton"><div class="skel-line short"></div><div class="skel-line long"></div><div class="skel-line medium"></div></div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+// Change this to your deployed server URL once you host it:
+// e.g. 'https://complianceiq-api.onrender.com'
+const API_URL = 'https://complianceiq-bpow.onrender.com';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let allItems = [];
+let activeSource = 'all';
+let activeTopic = 'all';
+
+// ── Demo data (shown when server is offline) ──────────────────────────────────
+const DEMO_ITEMS = [
+  { id: 1, title: "Master Direction on KYC — Amendment March 2025", summary: "RBI has amended the KYC Master Direction to include V-CIP as a primary onboarding channel. All regulated entities must comply by June 2025. Enhanced due diligence required for PEPs and high-risk customers.", source: "RBI", category: "Circular", color: "blue", date: "2025-03-01T00:00:00Z", tags: ["KYC"], link: "https://rbi.org.in" },
+  { id: 2, title: "PMLA Reporting for Virtual Digital Assets — Updated Guidelines", summary: "FIU-IND brings all VASPs under full PMLA scope. CTR threshold ₹10 lakh per day. STR must be filed within 7 working days of suspicion being formed.", source: "RBI", category: "Circular", color: "blue", date: "2025-02-18T00:00:00Z", tags: ["AML/CFT", "Crypto/VDA"], link: "https://rbi.org.in" },
+  { id: 3, title: "Revised LCR Run-off Factors for Digital Deposits", summary: "RBI has increased LCR run-off factor for internet banking retail deposits from 5% to 12%, and mobile banking from 10% to 15%, in response to digital bank-run risks.", source: "RBI", category: "Circular", color: "blue", date: "2025-01-15T00:00:00Z", tags: ["Liquidity", "Basel III"], link: "https://rbi.org.in" },
+  { id: 4, title: "Insider Trading Regulations — Digital Surveillance Mandate", summary: "SEBI mandates automated trade surveillance for all listed entities. Designated persons must use digital pre-clearance system for trades above ₹10 lakh.", source: "SEBI", category: "Circular", color: "green", date: "2025-01-28T00:00:00Z", tags: ["Insider Trading"], link: "https://sebi.gov.in" },
+  { id: 5, title: "SAR/STR Filing Window Reduced to 7 Working Days", summary: "FIU-IND clarifies that the STR filing window is 7 working days from the date suspicion is formed — not from completion of investigation. Records must be retained for 10 years.", source: "RBI", category: "Circular", color: "blue", date: "2025-01-08T00:00:00Z", tags: ["SAR/STR", "AML/CFT"], link: "https://rbi.org.in" },
+  { id: 6, title: "ESG Debt Securities Framework — Social and Sustainability Bonds", summary: "SEBI introduces comprehensive framework for issuance of social bonds, sustainability bonds, and sustainability-linked bonds under ESG classification.", source: "SEBI", category: "Circular", color: "green", date: "2025-06-05T00:00:00Z", tags: ["General"], link: "https://sebi.gov.in" },
+  { id: 7, title: "PCA Framework Revised — RoA Added as Trigger", summary: "RBI updates the Prompt Corrective Action framework to include Return on Assets as a new supervisory trigger alongside CRAR and Net NPA. Private sector banks now explicitly included.", source: "RBI", category: "Circular", color: "blue", date: "2025-02-05T00:00:00Z", tags: ["PCA/NPA"], link: "https://rbi.org.in" },
+  { id: 8, title: "KYC Relaxation for Low-Risk Customers — Extended to June 2026", summary: "RBI allows low-risk customers to continue transacting even if KYC update is pending until June 30, 2026. Banking correspondents authorised to assist with KYC updates.", source: "RBI", category: "Press Release", color: "blue", date: "2025-06-12T00:00:00Z", tags: ["KYC"], link: "https://rbi.org.in" },
+];
+
+// ── Fetch from live server ────────────────────────────────────────────────────
+async function fetchLiveFeed() {
+  const res = await fetch(`${API_URL}/api/feed`);
+  if (!res.ok) throw new Error('Server error ' + res.status);
+  return res.json();
+}
+
+async function refreshFeed() {
+  document.getElementById('refreshBtn').disabled = true;
+  try {
+    await fetch(`${API_URL}/api/feed/refresh`, { method: 'POST' });
+  } catch(e) {}
+  await loadFeed();
+  document.getElementById('refreshBtn').disabled = false;
+}
+
+async function loadFeed() {
+  setStatus('connecting');
+  try {
+    const data = await fetchLiveFeed();
+    allItems = data.items;
+    setStatus('live');
+    const d = new Date(data.fetchedAt);
+    document.getElementById('lastUpdated').textContent = 'Updated ' + d.toLocaleTimeString();
+    document.getElementById('demoBanner').classList.remove('visible');
+  } catch(err) {
+    // Fall back to demo data
+    console.warn('Server offline, using demo data:', err.message);
+    allItems = DEMO_ITEMS;
+    setStatus('offline');
+    document.getElementById('demoBanner').classList.add('visible');
+  }
+  buildTopicFilters();
+  updateCounts();
+  renderFeed();
+}
+
+function setStatus(state) {
+  const dot = document.getElementById('liveDot');
+  const label = document.getElementById('liveStatus');
+  dot.className = 'live-dot';
+  if (state === 'live') { dot.classList.add('live'); label.textContent = 'LIVE'; }
+  else if (state === 'offline') { dot.classList.add('error'); label.textContent = 'DEMO MODE'; }
+  else { label.textContent = 'Connecting...'; }
+}
+
+// ── Build dynamic topic filter buttons ───────────────────────────────────────
+function buildTopicFilters() {
+  const tags = [...new Set(allItems.flatMap(i => i.tags))].sort();
+  const container = document.getElementById('topicFilters');
+  container.innerHTML = `
+    <button class="filter-btn active" data-filter="topic" data-value="all" onclick="setFilter('topic','all',this)">
+      All Topics <span class="filter-count">${allItems.length}</span>
+    </button>
+  ` + tags.map(tag => {
+    const count = allItems.filter(i => i.tags.includes(tag)).length;
+    return `<button class="filter-btn" data-filter="topic" data-value="${tag}" onclick="setFilter('topic','${tag}',this)">
+      ${tag} <span class="filter-count">${count}</span>
+    </button>`;
+  }).join('');
+}
+
+function updateCounts() {
+  document.getElementById('count-all').textContent = allItems.length;
+  document.getElementById('count-rbi').textContent = allItems.filter(i => i.source === 'RBI').length;
+  document.getElementById('count-sebi').textContent = allItems.filter(i => i.source === 'SEBI').length;
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+function setFilter(type, value, el) {
+  document.querySelectorAll(`[data-filter="${type}"]`).forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  if (type === 'source') activeSource = value;
+  else activeTopic = value;
+  renderFeed();
+}
+
+function filterFeed() { renderFeed(); }
+
+function getFiltered() {
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  return allItems.filter(item => {
+    if (activeSource !== 'all' && item.source !== activeSource) return false;
+    if (activeTopic !== 'all' && !item.tags.includes(activeTopic)) return false;
+    if (q && !item.title.toLowerCase().includes(q) && !item.summary.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderFeed() {
+  const items = getFiltered();
+  document.getElementById('feedCount').textContent = `${items.length} regulation${items.length !== 1 ? 's' : ''}`;
+
+  const list = document.getElementById('feedList');
+  if (!items.length) {
+    list.innerHTML = '<div class="empty-state"><p>No matching circulars found.</p></div>';
+    return;
+  }
+
+  list.innerHTML = items.map((item, i) => {
+    const rawDate = item.date ? item.date.trim() : '';
+    const date = new Date(rawDate);
+    const dateStr = isNaN(date) ? rawDate : date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const srcClass = item.source === 'RBI' ? 'rbi' : 'sebi';
+    const delay = Math.min(i * 0.04, 0.4);
+
+    return `<div class="feed-item ${srcClass}" style="animation-delay:${delay}s" id="item-${item.id}" onclick="toggleItem('${item.id}')">
+      <div class="feed-item-top">
+        <span class="source-pill source-${srcClass}">${item.source}</span>
+        <span class="cat-pill">${item.category}</span>
+        ${item.tags.slice(0,2).map(t => `<span class="tag-pill">${t}</span>`).join('')}
+        ${item.severity ? `<span class="sev-badge ${item.severity >= 8 ? 'sev-critical' : item.severity >= 5 ? 'sev-high' : 'sev-low'}">${item.severity >= 8 ? '🔴' : item.severity >= 5 ? '🟡' : '🟢'} ${item.severity}/10</span>` : ''}
+        <span class="feed-item-date">${dateStr}</span>
+      </div>
+      <div class="feed-item-title">${escHtml(item.title)}</div>
+      <div class="feed-item-summary">${escHtml(item.summary || 'No summary available.')}</div>
+      <div class="feed-item-actions">
+        ${item.link ? `<a class="action-link" href="${item.link}" target="_blank" onclick="event.stopPropagation()">View Source ↗</a>` : ''}
+        <button class="ask-ai-btn" onclick="event.stopPropagation(); askAbout('${item.id}')">✦ Ask AI about this</button>
+      </div>
+      <div class="inline-answer" id="answer-${item.id}">
+        <div class="inline-answer-label">AI Summary</div>
+        <div class="inline-answer-text" id="answer-text-${item.id}"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleItem(id) {
+  const el = document.getElementById('item-' + id);
+  el.classList.toggle('expanded');
+}
+
+// ── Ask AI ────────────────────────────────────────────────────────────────────
+async function askAbout(id) {
+  const item = allItems.find(i => String(i.id) === String(id));
+  if (!item) return;
+
+  const answerEl = document.getElementById('answer-' + id);
+  const textEl = document.getElementById('answer-text-' + id);
+
+  answerEl.classList.add('visible');
+  textEl.innerHTML = '<em style="color:var(--ink-faint)">Summarising for compliance teams...</em>';
+
+  try {
+    const res = await fetch(API_URL + '/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: 'Summarise this regulation in 3-4 sentences for a compliance team. What changed, who is affected, what must teams do? Plain prose only. Regulation: ' + item.title + '. Detail: ' + item.summary }],
+        circulars: []
+      })
     });
+    const data = await res.json();
+    textEl.textContent = data.reply || data.error || 'No response';
+  } catch(e) {
+    textEl.textContent = 'Error: ' + e.message;
+  }
+}
 
-    function wireFilters() {
-      document.querySelectorAll('.filter-button').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('.filter-button').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          currentFilter = btn.dataset.filter;
-          renderCirculars();
-        });
-      });
-      searchBox.addEventListener('input', () => {
-        renderCirculars();
-      });
-    }
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
-    async function fetchFeeds() {
-      loadingState.style.display = 'block';
-      cardsContainer.style.display = 'none';
-      emptyState.style.display = 'none';
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadFeed();
 
-      const combined = [];
-      try {
-        // SEBI
-        try {
-          const resSebi = await fetch(FEEDS.SEBI);
-          const txtSebi = await resSebi.text();
-          const sebiXml = new DOMParser().parseFromString(txtSebi, 'text/xml');
-          Array.from(sebiXml.querySelectorAll('item')).slice(0, 20).forEach(item => {
-            combined.push({
-              source: 'SEBI',
-              title: item.querySelector('title')?.textContent || 'SEBI circular',
-              date:  item.querySelector('pubDate')?.textContent || '',
-              link:  item.querySelector('link')?.textContent || '#',
-              description: item.querySelector('description')?.textContent || '',
-              id:   item.querySelector('guid')?.textContent || item.querySelector('link')?.textContent
-            });
-          });
-        } catch (e) {
-          console.warn('SEBI feed issue', e);
-        }
+// ── Chatbot ────────────────────────────────────────────────────────────────────
+let chatOpen = false;
+let chatHistory = [];
+let chatBusy = false;
 
-        // RBI
-        try {
-          const resRbi = await fetch(FEEDS.RBI);
-          const txtRbi = await resRbi.text();
-          const rbiXml = new DOMParser().parseFromString(txtRbi, 'text/xml');
-          Array.from(rbiXml.querySelectorAll('item')).slice(0, 20).forEach(item => {
-            combined.push({
-              source: 'RBI',
-              title: item.querySelector('title')?.textContent || 'RBI notification',
-              date:  item.querySelector('pubDate')?.textContent || '',
-              link:  item.querySelector('link')?.textContent || '#',
-              description: item.querySelector('description')?.textContent || '',
-              id:   item.querySelector('guid')?.textContent || item.querySelector('link')?.textContent
-            });
-          });
-        } catch (e) {
-          console.warn('RBI feed issue', e);
-        }
+function toggleChat() {
+  chatOpen = !chatOpen;
+  document.getElementById('chatPanel').classList.toggle('open', chatOpen);
+}
 
-        // Fallback demo if both fail
-        if (!combined.length) {
-          combined.push(
-            {
-              source: 'SEBI',
-              title: 'SEBI circular on revised KYC norms for high-value accounts',
-              date: '2026-03-20',
-              link: '#',
-              description: 'Revised KYC framework for accounts above ₹5,00,000 including enhanced due diligence and periodic review.',
-              id: 'demo-sebi-1'
-            },
-            {
-              source: 'RBI',
-              title: 'RBI notification on suspicious transaction reporting timelines',
-              date: '2026-03-18',
-              link: '#',
-              description: 'Clarification on timelines for SAR / STR filing within 7 days of internal suspicion confirmation.',
-              id: 'demo-rbi-1'
-            }
-          );
-        }
+function chatQuick(q) {
+  document.getElementById('chatInput').value = q;
+  sendChat();
+}
 
-        allCirculars = combined.map(c => enrichCircular(c));
-        updateCounts();
-        renderCirculars();
-        const now = new Date();
-        lastUpdated.textContent = ` • updated ${now.toLocaleTimeString('en-IN')}`;
-      } catch (e) {
-        console.error('Feed error', e);
-        allCirculars = [];
-        renderCirculars();
-      } finally {
-        loadingState.style.display = 'none';
-      }
-    }
+function sendChat() {
+  if (chatBusy) return;
+  const input = document.getElementById('chatInput');
+  const q = input.value.trim();
+  if (!q) return;
 
-    function enrichCircular(c) {
-      const combinedText = (c.title + ' ' + c.description).toLowerCase();
-      const tags = [];
+  input.value = '';
+  addChatMsg('user', q);
+  chatHistory.push({ role: 'user', content: q });
 
-      if (combinedText.includes('kyc') || combinedText.includes('customer due diligence') || combinedText.includes('aml')) {
-        tags.push('AML / KYC');
-      }
-      if (combinedText.includes('basel') || combinedText.includes('capital') || combinedText.includes('lcr') || combinedText.includes('nsfr')) {
-        tags.push('Basel / capital');
-      }
-      if (combinedText.includes('cyber') || combinedText.includes('it risk') || combinedText.includes('information security')) {
-        tags.push('Cyber / tech risk');
-      }
-      if (combinedText.includes('suspicious transaction') || combinedText.includes('sar') || combinedText.includes('str')) {
-        tags.push('SAR / STR');
-      }
-      if (!tags.length) tags.push('General compliance');
+  const typing = addTyping();
+  chatBusy = true;
+  document.getElementById('chatSend').disabled = true;
 
-      let severity = 'low';
-      const t = combinedText;
-      if (
-        t.includes('penalty') ||
-        t.includes('monetary') ||
-        t.includes('fine') ||
-        t.includes('suspicious transaction') ||
-        t.includes('sar') ||
-        t.includes('str')
-      ) {
-        severity = 'high';
-      } else if (
-        t.includes('kyc') ||
-        t.includes('aml') ||
-        t.includes('basel') ||
-        t.includes('lcr') ||
-        t.includes('liquidity')
-      ) {
-        severity = 'medium';
-      }
+  fetch(`${API_URL}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages: [{ role: 'user', content: q }],
+      circulars: allItems
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    typing.remove();
+    const reply = data.reply || data.error || 'No response';
+    addChatMsg('ai', reply);
+    chatHistory.push({ role: 'assistant', content: reply });
+  })
+  .catch(err => {
+    typing.remove();
+    addChatMsg('ai', 'Error: ' + err.message);
+  })
+  .finally(() => {
+    chatBusy = false;
+    document.getElementById('chatSend').disabled = false;
+  });
+}
 
-      let dateStr = c.date;
-      try {
-        const parsed = new Date(c.date);
-        if (!isNaN(parsed)) {
-          dateStr = parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-        }
-      } catch (_) {}
+function addChatMsg(role, text) {
+  const msgs = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  div.innerHTML = `
+    <div class="chat-msg-label">${role === 'user' ? 'You' : 'Compliance AI'}</div>
+    <div class="chat-bubble">${escHtml(text)}</div>
+  `;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
 
-      const summaryRaw = c.description || c.title;
-      const summary = summaryRaw.length > 180 ? summaryRaw.slice(0, 180) + '…' : summaryRaw;
+function addTyping() {
+  const msgs = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ai';
+  div.innerHTML = '<div class="chat-typing"><span></span><span></span><span></span></div>';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
 
-      const summaryHighlighted = summary
-        .replace(/₹\s?([\d,]+)/g, '<b>₹$1</b>')
-        .replace(/(\d{1,3},\d{3}\s*(lakh|crore))/gi, '<b>$1</b>')
-        .replace(/(\b\d+\s*days?\b)/gi, '<b>$1</b>');
+const chatInputEl = document.getElementById('chatInput');
+if (chatInputEl) chatInputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendChat();
+});
 
-      return {
-        ...c,
-        dateStr,
-        tags,
-        severity,
-        summary: summaryHighlighted
-      };
-    }
+</script>
 
-    function renderCirculars() {
-      const query = (searchBox.value || '').toLowerCase();
-      let filtered = allCirculars.slice();
+<!-- Chatbot button -->
+<button class="chat-btn" onclick="toggleChat()" title="Ask Compliance AI">✦</button>
 
-      if (currentFilter === 'SEBI' || currentFilter === 'RBI') {
-        filtered = filtered.filter(c => c.source === currentFilter);
-      } else if (currentFilter === 'AML') {
-        filtered = filtered.filter(c => c.tags.includes('AML / KYC'));
-      } else if (currentFilter === 'Basel') {
-        filtered = filtered.filter(c => c.tags.includes('Basel / capital'));
-      } else if (currentFilter === 'Cyber') {
-        filtered = filtered.filter(c => c.tags.includes('Cyber / tech risk'));
-      } else if (currentFilter === 'SAR') {
-        filtered = filtered.filter(c => c.tags.includes('SAR / STR'));
-      }
+<!-- Chatbot panel -->
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <div class="chat-header-info">
+      <div class="chat-header-title">Compliance <span>AI</span></div>
+      <div class="chat-header-sub">BANKING REGULATORY EXPERT</div>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="chat-context-bar" id="chatContextBar">
+    ✦ Aware of all live circulars on screen
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-msg ai">
+      <div class="chat-msg-label">Compliance AI</div>
+      <div class="chat-bubble">Hello! I'm your banking compliance expert. I know about all the live RBI and SEBI circulars on screen. Ask me anything — regulations, penalties, KYC requirements, AML rules, or what any circular means for your team.</div>
+    </div>
+  </div>
+  <div class="chat-quick">
+    <span class="chat-quick-chip" onclick="chatQuick('What are the latest SEBI circulars about?')">Latest SEBI updates</span>
+    <span class="chat-quick-chip" onclick="chatQuick('What KYC documents are required for new bank accounts?')">KYC requirements</span>
+    <span class="chat-quick-chip" onclick="chatQuick('What triggers a Suspicious Activity Report?')">SAR triggers</span>
+    <span class="chat-quick-chip" onclick="chatQuick('Explain AML compliance for banks in India')">AML basics</span>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chatInput" type="text" placeholder="Ask about any regulation..." />
+    <button class="chat-send" id="chatSend" onclick="sendChat()">➤</button>
+  </div>
+</div>
 
-      if (query) {
-        filtered = filtered.filter(c =>
-          c.title.toLowerCase().includes(query) ||
-          c.description.toLowerCase().includes(query) ||
-          c.tags.join(' ').toLowerCase().includes(query)
-        );
-      }
-
-      visibleCount.textContent = filtered.length.toString();
-
-      if (!filtered.length) {
-        cardsContainer.style.display = 'none';
-        emptyState.style.display = 'block';
-        return;
-      }
-
-      emptyState.style.display = 'none';
-      cardsContainer.style.display = 'block';
-
-      cardsContainer.innerHTML = filtered.map(c => {
-        const sevClass =
-          c.severity === 'high' ? 'severity-high' :
-          c.severity === 'medium' ? 'severity-medium' :
-          'severity-low';
-
-        const sevLabel = c.severity === 'high' ? 'HIGH RISK' :
-                         c.severity === 'medium' ? 'MEDIUM RISK' : 'LOW RISK';
-
-        const srcClass = c.source === 'SEBI' ? 'source-sebi' : 'source-rbi';
-
-        return `
-          <article class="circular-card" onclick="openCircular('${encodeURIComponent(c.id || '')}')">
-            <div class="circular-header">
-              <div style="display:flex;gap:6px;align-items:center;">
-                <span class="source-pill ${srcClass}">${c.source}</span>
-                <span class="severity-pill ${sevClass}">${sevLabel}</span>
-              </div>
-              <div class="circular-meta">
-                <span>${c.dateStr || 'Recent'}</span>
-              </div>
-            </div>
-            <div class="circular-title">${c.title}</div>
-            <div class="tag-row">
-              ${c.tags.map(t => `<span class="tag-chip">${t}</span>`).join('')}
-            </div>
-            <div class="summary-text">${c.summary}</div>
-            <div class="card-footer">
-              <span class="link-hint">${c.link && c.link !== '#' ? 'Click card for full circular on official site' : 'Demo item (no live link)'}</span>
-              <button class="ask-ai" onclick="event.stopPropagation(); askAI('${encodeURIComponent(c.id || '')}')">
-                Ask AI for action items
-              </button>
-            </div>
-          </article>
-        `;
-      }).join('');
-    }
-
-    function updateCounts() {
-      document.getElementById('count-all').textContent   = allCirculars.length;
-      document.getElementById('count-sebi').textContent  = allCirculars.filter(c => c.source === 'SEBI').length;
-      document.getElementById('count-rbi').textContent   = allCirculars.filter(c => c.source === 'RBI').length;
-      document.getElementById('count-aml').textContent   = allCirculars.filter(c => c.tags.includes('AML / KYC')).length;
-      document.getElementById('count-basel').textContent = allCirculars.filter(c => c.tags.includes('Basel / capital')).length;
-      document.getElementById('count-cyber').textContent = allCirculars.filter(c => c.tags.includes('Cyber / tech risk')).length;
-      document.getElementById('count-sar').textContent   = allCirculars.filter(c => c.tags.includes('SAR / STR')).length;
-    }
-
-    function openCircular(idEncoded) {
-      const id = decodeURIComponent(idEncoded);
-      const found = allCirculars.find(c => (c.id || '') === id);
-      if (found && found.link && found.link !== '#') {
-        window.open(found.link, '_blank');
-      }
-    }
-
-    // Simple offline AI (no key needed) so you can demo to dad
-    function wireChat() {
-      const chatInput = document.getElementById('chatInput');
-      const chatSend  = document.getElementById('chatSend');
-      const chatWin   = document.getElementById('chatWindow');
-
-      function addBubble(text, who) {
-        const div = document.createElement('div');
-        div.className = 'chat-bubble ' + (who === 'user' ? 'chat-user' : 'chat-ai');
-        div.textContent = text;
-        chatWin.appendChild(div);
-        chatWin.scrollTop = chatWin.scrollHeight;
-      }
-
-      chatSend.addEventListener('click', () => {
-        const q = chatInput.value.trim();
-        if (!q) return;
-        addBubble(q, 'user');
-        chatInput.value = '';
-        const answer = offlineAnswer(q);
-        setTimeout(() => addBubble(answer, 'ai'), 400);
-      });
-
-      chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          chatSend.click();
-        }
-      });
-
-      document.querySelectorAll('.chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          chatInput.value = chip.dataset.q;
-          chatSend.click();
-        });
-      });
-
-      // Greet
-      addBubble('Hi! I can explain any RBI / SEBI circular on this page in plain English for a bank compliance team.', 'ai');
-    }
-
-    function offlineAnswer(q) {
-      const lower = q.toLowerCase();
-      if (lower.includes('sar') || lower.includes('str') || lower.includes('suspicious')) {
-        return 'In India, SAR/STR filings are typically triggered when a transaction looks inconsistent with a customer’s profile or indicates possible money laundering or terror financing. Compliance teams should: (1) document why the activity is unusual, (2) escalate to the AML unit, (3) file STR within about 7 days of confirming suspicion, and (4) avoid tipping off the customer.';
-      }
-      if (lower.includes('kyc')) {
-        return 'KYC penalties usually arise when banks fail to properly identify or verify customers, skip periodic updates, or ignore risk-based KYC. Penalties can include monetary fines, restrictions on new business, and mandatory remediation. Practically, your dad’s team needs strong KYC onboarding, periodic risk-based reviews, and clear documentation of address/ID checks.';
-      }
-      if (lower.includes('basel') || lower.includes('lcr')) {
-        return 'Basel III and LCR rules push banks to hold enough high-quality liquid assets to survive short-term stress. For Indian banks, that means close monitoring of LCR ratios, classification of HQLA, and regular reporting to RBI. Compliance works with Treasury and Risk teams to ensure policy, limits, and MIS all line up with the latest RBI circulars.';
-      }
-      if (lower.includes('alert') || lower.includes('transaction monitoring')) {
-        return 'RBI expects transaction monitoring alerts to be tuned so they capture genuine suspicious patterns without drowning staff in noise. Good practice: calibrate scenarios using historical data, escalate high-risk alerts to AML quickly, document dispositions, and periodically review thresholds based on new RBI/SEBI guidance.';
-      }
-      return 'For any specific circular, click it on the left, read the key tags (AML, SAR, Basel, Cyber) and then ask me: “What 3–5 action items should a bank take for this circular?”. I will answer in practical compliance language your dad will understand.';
-    }
-  </script>
+<div style="text-align:center;padding:16px;font-family:var(--mono);font-size:10px;color:var(--ink-faint);letter-spacing:1px;border-top:1px solid var(--border);margin-top:40px;">
+  POWERED BY <span style="color:var(--gold)">CLAUDE AI</span> · ANTHROPIC · LIVE DATA FROM RBI & SEBI
+</div>
 </body>
 </html>
