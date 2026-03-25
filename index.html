@@ -787,7 +787,7 @@ function renderFeed() {
     return `<div class="feed-item ${srcClass}" style="animation-delay:${delay}s" id="item-${safeIdx}" onclick="toggleItem(${safeIdx})">
       <div class="feed-item-top">
         <span class="source-pill source-${srcClass}">${item.source}</span>
-        <span class="cat-pill">${item.category}</span>
+        ${item.category ? `<span class="cat-pill">${item.category}</span>` : ""}
         ${item.tags.slice(0,2).map(t => `<span class="tag-pill">${t}</span>`).join('')}
         ${item.severity ? `<span class="sev-badge ${item.severity >= 8 ? 'sev-critical' : item.severity >= 5 ? 'sev-high' : 'sev-low'}">${item.severity >= 8 ? '🔴' : item.severity >= 5 ? '🟡' : '🟢'} ${item.severity}/10</span>` : ''}
         <span class="feed-item-date">${dateStr}</span>
@@ -827,7 +827,7 @@ async function askAbout(idx) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: [{ role: 'user', content: 'Summarise this regulation in 3-4 sentences for a compliance team. What changed, who is affected, what must teams do? Plain prose only. Regulation: ' + item.title + '. Detail: ' + item.summary }],
+        messages: [{ role: 'user', content: 'Summarise this regulation in 3-4 sentences for a compliance team. What changed, who is affected, what must teams do? Plain prose only. Regulation: ' + (item.title || 'Unknown') + '. Detail: ' + (item.summary || item.title || 'No details available') }],
         circulars: []
       })
     });
