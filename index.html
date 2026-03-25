@@ -827,7 +827,12 @@ async function askAbout(idx) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: [{ role: 'user', content: 'Summarise this regulation in 3-4 sentences for a compliance team. What changed, who is affected, what must teams do? Plain prose only. Regulation: ' + (item.title || 'Unknown') + '. Detail: ' + (item.summary || item.title || 'No details available') }],
+        messages: (() => {
+          const title = item.title || 'Unknown regulation';
+          const detail = item.summary || item.title || 'No further details';
+          const msg = 'Summarise in 3-4 sentences for a bank compliance team. What changed, who is affected, what must teams do? Regulation: ' + title + ' Detail: ' + detail;
+          return [{ role: 'user', content: msg }];
+        })(),
         circulars: []
       })
     });
