@@ -46,23 +46,25 @@ function scoreItem(title, summary) {
 
 function isCircular(title, summary, source) {
   const text = (title + ' ' + summary).toLowerCase();
-
+  
+  // Filter out court cases, press releases, appointments
   const exclude = [
     'court', 'judgement', 'judgment', 'tribunal', 'adjudication',
     'press release', 'appointment', 'takes charge', 'personnel',
     'exemption order', 'quasi judicial', 'order against',
     'settlement', 'consent order'
   ];
-
+  
   for (const word of exclude) {
     if (text.includes(word)) return false;
   }
-
+  
+  // For SEBI only keep actual circulars
   if (source === 'SEBI') {
-    const include = ['circular', 'regulation', 'guideline', 'framework', 'direction', 'amendment', 'compliance', 'reporting', 'norms', 'requirement'];
+    const include = ['circular', 'regulation', 'guideline', 'framework', 'direction', 'amendment', 'compliance', 'reporting'];
     return include.some(word => text.includes(word));
   }
-
+  
   return true;
 }
 
@@ -82,14 +84,14 @@ app.get('/api/feed', async (req, res) => {
     try {
       const feed = await parser.parseURL(url);
       const sourceName = source.includes('sebi') ? 'SEBI' : 'RBI';
-
-      for (const item of feed.items.slice(0, 25)) {
-        const title = String(item.title || '').trim();
-        const summary = String(item.contentSnippet || item.content || item.summary || '').trim();
-
-        if (!title) continue;
+      
+      for (const item of feed.items.slice(0, 20)) {
+        const title = item.title || '';
+        const summary = item.contentSnippet || item.content || item.summary || '';
+        
+        // Only include actual circulars
         if (!isCircular(title, summary, sourceName)) continue;
-
+        
         results.push({
           id: item.link || item.guid || Math.random().toString(),
           title,
@@ -122,24 +124,18 @@ app.get('/api/feed', async (req, res) => {
 app.post('/api/chat', async (req, res) => {
   const { message, circulars } = req.body;
 
-  if (!GROQ_API_KEY) {
-    return res.status(500).json({ error: 'API key not configured on server' });
+  if (!message || message.trim() === '') {
+    return res.status(400).json({ error: 'Message is empty' });
   }
 
-  const cleanMessage = String(message || '').trim();
-
-  if (!cleanMessage) {
-    return res.status(400).json({ error: 'Message is empty' });
+  if (!GROQ_API_KEY) {
+    return res.status(500).json({ error: 'API key not configured on server' });
   }
 
   const circularContext = circulars && circulars.length
     ? 'Live circulars currently on screen:\n' + circulars.slice(0, 15).map(i => `- ${i.source}: ${i.title} (${i.tags.join(', ')})`).join('\n')
     : '';
 
-  const systemContent = String(
-    'You are a senior banking compliance expert specializing in Indian banking regulations including RBI, SEBI, PMLA, KYC, AML, and Basel III norms. Give specific, practical answers with key thresholds and deadlines highlighted. ' + circularContext
-  );
-
   try {
     const groq = new Groq({ apiKey: GROQ_API_KEY });
     const completion = await groq.chat.completions.create({
@@ -147,47 +143,36 @@ app.post('/api/chat', async (req, res) => {
       messages: [
         {
           role: 'system',
-          content: systemContent
+          content: `You are a senior banking compliance expert specializing in Indian banking regulations including RBI, SEBI, PMLA, KYC, AML, and Basel III norms. Give specific, practical answers with key thresholds and deadlines highlighted. ${circularContext}`
         },
         {
           role: 'user',
-          content: cleanMessage
+          content: message.trim()
         }
       ],
       max_tokens: 1024
     });
 
     const reply = completion.choices?.[0]?.message?.content;
-    if (!reply) {
-      console.error('Unexpected Groq response:', JSON.stringify(completion));
-      return res.status(500).json({ error: 'No reply from AI' });
-    }
+    if (!reply) return res.status(500).json({ error: 'No reply from AI' });
 
-    res.json({ reply: String(reply) });
+    res.json({ reply });
   } catch (err) {
     console.error('Groq error:', JSON.stringify(err.error || err.message));
-    res.status(500).json({ error: 'AI request failed', detail: String(err.message) });
+    res.status(500).json({ error: 'AI request failed', detail: err.message });
   }
 });
 
 app.post('/api/ask', async (req, res) => {
   const { title, summary, source } = req.body;
 
-  if (!GROQ_API_KEY) {
-    return res.status(500).json({ error: 'API key not configured on server' });
-  }
-
-  const cleanTitle = String(title || '').trim();
-  const cleanSummary = String(summary || 'No summary available').trim();
-  const cleanSource = String(source || 'Unknown').trim();
-
-  if (!cleanTitle) {
+  if (!title || title.trim() === '') {
     return res.status(400).json({ error: 'Title is empty' });
   }
 
-  const userContent = String(
-    'Circular from ' + cleanSource + '. Title: ' + cleanTitle + '. Summary: ' + cleanSummary + '. What does this mean for our compliance team? What actions are needed and what are the deadlines or penalties?'
-  );
+  if (!GROQ_API_KEY) {
+    return res.status(500).json({ error: 'API key not configured on server' });
+  }
 
   try {
     const groq = new Groq({ apiKey: GROQ_API_KEY });
@@ -196,25 +181,23 @@ app.post('/api/ask', async (req, res) => {
       messages: [
         {
           role: 'system',
-          content: String('You are a senior banking compliance officer in India. When given a regulatory circular, explain what it means, what action the compliance team needs to take, any deadlines, and the consequences of non-compliance. Be specific and practical.')
+          content: 'You are a senior banking compliance officer in India. When given a regulatory circular, explain what it means, what action the compliance team needs to take, any deadlines, and the consequences of non-compliance. Be specific and practical.'
         },
         {
           role: 'user',
-          content: userContent
+          content: `Circular from ${source}:\nTitle: ${title}\nSummary: ${summary || 'No summary available'}\n\nWhat does this mean for our compliance team?`.trim()
         }
       ],
       max_tokens: 800
     });
 
     const reply = completion.choices?.[0]?.message?.content;
-    if (!reply) {
-      return res.status(500).json({ error: 'No reply from AI' });
-    }
+    if (!reply) return res.status(500).json({ error: 'No reply from AI' });
 
-    res.json({ reply: String(reply) });
+    res.json({ reply });
   } catch (err) {
     console.error('Ask error:', JSON.stringify(err.error || err.message));
-    res.status(500).json({ error: 'AI request failed', detail: String(err.message) });
+    res.status(500).json({ error: 'AI request failed' });
   }
 });
 
