@@ -659,6 +659,7 @@ const API_URL = 'https://complianceiq-bpow.onrender.com';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let allItems = [];
+let renderedItems = [];
 let activeSource = 'all';
 let activeTopic = 'all';
 
@@ -766,6 +767,7 @@ function getFiltered() {
 // ── Render ────────────────────────────────────────────────────────────────────
 function renderFeed() {
   const items = getFiltered();
+  renderedItems = items;
   document.getElementById('feedCount').textContent = `${items.length} regulation${items.length !== 1 ? 's' : ''}`;
 
   const list = document.getElementById('feedList');
@@ -811,8 +813,7 @@ function toggleItem(idx) {
 
 // ── Ask AI ────────────────────────────────────────────────────────────────────
 async function askAbout(idx) {
-  const items = getFiltered();
-  const item = items[idx];
+  const item = renderedItems[idx];
   if (!item) return;
 
   const answerEl = document.getElementById('answer-' + idx);
