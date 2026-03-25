@@ -15,8 +15,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 const FEEDS = {
   sebi_circulars: 'https://www.sebi.gov.in/sebirss.xml',
-  rbi_circulars: 'https://www.rbi.org.in/Scripts/rss.aspx?Id=6',
-  rbi_notifications: 'https://www.rbi.org.in/Scripts/rss.aspx?Id=9'
+  rbi_circulars: 'https://www.rbi.org.in/Scripts/rss.aspx?Id=6'
 };
 
 function tagItem(title, summary) {
@@ -45,6 +44,30 @@ function scoreItem(title, summary) {
   return Math.min(10, Math.max(1, score));
 }
 
+function isCircular(title, summary, source) {
+  const text = (title + ' ' + summary).toLowerCase();
+  
+  // Filter out court cases, press releases, appointments
+  const exclude = [
+    'court', 'judgement', 'judgment', 'tribunal', 'adjudication',
+    'press release', 'appointment', 'takes charge', 'personnel',
+    'exemption order', 'quasi judicial', 'order against',
+    'settlement', 'consent order'
+  ];
+  
+  for (const word of exclude) {
+    if (text.includes(word)) return false;
+  }
+  
+  // For SEBI only keep actual circulars
+  if (source === 'SEBI') {
+    const include = ['circular', 'regulation', 'guideline', 'framework', 'direction', 'amendment', 'compliance', 'reporting'];
+    return include.some(word => text.includes(word));
+  }
+  
+  return true;
+}
+
 let lastGoodData = [];
 
 app.get('/health', (req, res) => {
@@ -60,16 +83,22 @@ app.get('/api/feed', async (req, res) => {
   for (const [source, url] of Object.entries(FEEDS)) {
     try {
       const feed = await parser.parseURL(url);
-      for (const item of feed.items.slice(0, 15)) {
+      const sourceName = source.includes('sebi') ? 'SEBI' : 'RBI';
+      
+      for (const item of feed.items.slice(0, 20)) {
         const title = item.title || '';
         const summary = item.contentSnippet || item.content || item.summary || '';
+        
+        // Only include actual circulars
+        if (!isCircular(title, summary, sourceName)) continue;
+        
         results.push({
           id: item.link || item.guid || Math.random().toString(),
           title,
           summary,
           link: item.link || '',
           date: item.pubDate || item.isoDate || '',
-          source: source.includes('sebi') ? 'SEBI' : 'RBI',
+          source: sourceName,
           tags: tagItem(title, summary),
           severity: scoreItem(title, summary)
         });
@@ -95,6 +124,10 @@ app.get('/api/feed', async (req, res) => {
 app.post('/api/chat', async (req, res) => {
   const { message, circulars } = req.body;
 
+  if (!message || message.trim() === '') {
+    return res.status(400).json({ error: 'Message is empty' });
+  }
+
   if (!GROQ_API_KEY) {
     return res.status(500).json({ error: 'API key not configured on server' });
   }
@@ -112,26 +145,30 @@ app.post('/api/chat', async (req, res) => {
           role: 'system',
           content: `You are a senior banking compliance expert specializing in Indian banking regulations including RBI, SEBI, PMLA, KYC, AML, and Basel III norms. Give specific, practical answers with key thresholds and deadlines highlighted. ${circularContext}`
         },
-        { role: 'user', content: message }
+        {
+          role: 'user',
+          content: message.trim()
+        }
       ],
       max_tokens: 1024
     });
 
     const reply = completion.choices?.[0]?.message?.content;
-    if (!reply) {
-      console.error('Unexpected Groq response:', JSON.stringify(completion));
-      return res.status(500).json({ error: 'No reply from AI' });
-    }
+    if (!reply) return res.status(500).json({ error: 'No reply from AI' });
 
     res.json({ reply });
   } catch (err) {
-    console.error('Groq error:', err.message);
+    console.error('Groq error:', JSON.stringify(err.error || err.message));
     res.status(500).json({ error: 'AI request failed', detail: err.message });
   }
 });
 
 app.post('/api/ask', async (req, res) => {
   const { title, summary, source } = req.body;
+
+  if (!title || title.trim() === '') {
+    return res.status(400).json({ error: 'Title is empty' });
+  }
 
   if (!GROQ_API_KEY) {
     return res.status(500).json({ error: 'API key not configured on server' });
@@ -148,7 +185,7 @@ app.post('/api/ask', async (req, res) => {
         },
         {
           role: 'user',
-          content: `Circular from ${source}:\nTitle: ${title}\nSummary: ${summary}\n\nWhat does this mean for our compliance team?`
+          content: `Circular from ${source}:\nTitle: ${title}\nSummary: ${summary || 'No summary available'}\n\nWhat does this mean for our compliance team?`.trim()
         }
       ],
       max_tokens: 800
@@ -159,7 +196,7 @@ app.post('/api/ask', async (req, res) => {
 
     res.json({ reply });
   } catch (err) {
-    console.error('Ask error:', err.message);
+    console.error('Ask error:', JSON.stringify(err.error || err.message));
     res.status(500).json({ error: 'AI request failed' });
   }
 });
