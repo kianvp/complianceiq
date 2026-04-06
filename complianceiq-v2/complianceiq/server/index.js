@@ -12,7 +12,6 @@ app.use(express.json());
 
 const FEEDS = {
   sebi_circulars: { url: 'https://www.sebi.gov.in/sebirss.xml', label: 'SEBI', category: 'Circular', color: 'green' },
-  rbi_circulars: { url: 'https://www.rbi.org.in/notifications_rss.xml', label: 'RBI', category: 'Circular', color: 'blue' },
 };
 
 const TAG_RULES = [
@@ -30,7 +29,7 @@ const TAG_RULES = [
   { keywords: ['payment', 'UPI', 'NEFT', 'RTGS', 'digital payment'], tag: 'Payments' },
   { keywords: ['NBFC', 'non-banking'], tag: 'NBFC' },
   { keywords: ['mutual fund', 'scheme', 'NAV', 'AIF'], tag: 'Funds' },
-  { keywords: ['stock broker', 'clearing', 'settlement', 'derivative'], tag: 'Markets' },
+  { keywords: ['CRR', 'SLR', 'cash reserve', 'statutory liquidity'], tag: 'CRR/SLR' },
 ];
 
 const EXCLUDE_KEYWORDS = [
@@ -43,7 +42,6 @@ const EXCLUDE_KEYWORDS = [
 function isRealCircular(title, link) {
   const t = (title || '').toLowerCase();
   const l = (link || '').toLowerCase();
-  // For SEBI, only keep items from the /legal/circulars/ path
   if (l.includes('sebi.gov.in') && !l.includes('/legal/circulars/') && !l.includes('/legal/master-circulars/')) return false;
   return !EXCLUDE_KEYWORDS.some(kw => t.includes(kw));
 }
@@ -60,12 +58,10 @@ function classifyTags(title, summary) {
 
 function scoreSeverity(title, summary) {
   const text = (title + ' ' + summary).toLowerCase();
-  const critical = ['penalty', 'deadline', 'immediate', 'mandatory', 'enforcement', 'suspension', 'cancellation', 'comply by'];
-  const high = ['amendment', 'revised', 'new circular', 'master direction', 'framework', 'guidelines', 'regulation', 'aml', 'kyc', 'pmla', 'basel', 'capital', 'liquidity', 'pca'];
-  const low = ['press release', 'appointment', 'takes charge', 'seminar', 'clarification'];
+  const critical = ['penalty', 'deadline', 'immediate', 'mandatory', 'enforcement', 'suspension', 'comply by'];
+  const high = ['amendment', 'revised', 'new circular', 'master direction', 'framework', 'guidelines', 'regulation', 'aml', 'kyc', 'pmla', 'basel', 'capital', 'liquidity', 'pca', 'directions'];
   if (critical.some(w => text.includes(w))) return 8 + Math.floor(Math.random() * 2);
   if (high.some(w => text.includes(w))) return 5 + Math.floor(Math.random() * 3);
-  if (low.some(w => text.includes(w))) return 1 + Math.floor(Math.random() * 2);
   return 3;
 }
 
@@ -93,17 +89,63 @@ async function fetchFeed(key, config) {
   }
 }
 
+// Fetch RBI circulars via RSS proxy
+async function fetchRBICirculars() {
+  const proxyUrls = [
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.rbi.org.in/notifications_rss.xml'),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.rbi.org.in/pressreleases_rss.xml'),
+  ];
+
+  for (const url of proxyUrls) {
+    try {
+      const res = await fetch(url);
+      const text = await res.text();
+      if (text && (text.includes('<item>') || text.includes('<rss'))) {
+        const feed = await parser.parseString(text);
+        const items = (feed.items || [])
+          .filter(item => isRealCircular(item.title, item.link))
+          .slice(0, 20)
+          .map(item => ({
+            id: item.guid || item.link || item.title,
+            title: item.title || 'RBI Circular',
+            summary: item.contentSnippet || item.summary || '',
+            link: item.link || 'https://rbi.org.in',
+            date: item.pubDate || item.isoDate || new Date().toISOString(),
+            source: 'RBI',
+            category: 'Circular',
+            color: 'blue',
+            tags: classifyTags(item.title, item.contentSnippet || ''),
+            severity: scoreSeverity(item.title, item.contentSnippet || ''),
+          }));
+        if (items.length > 0) {
+          console.log('RBI: got ' + items.length + ' items');
+          return items;
+        }
+      }
+    } catch (e) {
+      console.error('RBI proxy failed:', e.message);
+    }
+  }
+  return [];
+}
+
 let bestKnownItems = [];
 
 app.get('/api/feed', async (req, res) => {
   const cached = cache.get('feed');
   if (cached) return res.json({ items: cached, cached: true, fetchedAt: cache.get('fetchedAt') });
 
-  const results = await Promise.allSettled(Object.entries(FEEDS).map(([key, config]) => fetchFeed(key, config)));
-  const freshItems = results
-    .filter(r => r.status === 'fulfilled').flatMap(r => r.value)
-    .filter((item, idx, arr) => arr.findIndex(i => i.id === item.id) === idx)
-    .sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 60);
+  const [feedResults, rbiItems] = await Promise.all([
+    Promise.allSettled(Object.entries(FEEDS).map(([key, config]) => fetchFeed(key, config))),
+    fetchRBICirculars()
+  ]);
+
+  const freshItems = [
+    ...feedResults.filter(r => r.status === 'fulfilled').flatMap(r => r.value),
+    ...rbiItems
+  ].filter((item, idx, arr) => arr.findIndex(i => i.id === item.id) === idx)
+   .sort((a, b) => new Date(b.date) - new Date(a.date))
+   .slice(0, 60);
 
   if (freshItems.length > 0) {
     const merged = [...freshItems];
@@ -136,9 +178,11 @@ app.post('/api/chat', async (req, res) => {
     ? 'Live circulars on screen:\n' + circulars.slice(0, 15).map(i => '- ' + i.source + ': ' + i.title + ' (' + i.tags.join(', ') + ')').join('\n')
     : '';
 
-  console.log('Chat request received, messages:', JSON.stringify(messages).slice(0, 300));
-  const rawMessage = messages[messages.length - 1].content;
-  const lastMessage = (rawMessage || '').trim() || 'Explain what this regulation means for a bank compliance team.';
+  const lastMessage = messages[messages.length - 1];
+  const msgContent = (lastMessage && lastMessage.content && lastMessage.content.trim()) || 'Explain this regulation for a bank compliance team.';
+  
+  console.log('Chat request, msg:', msgContent.slice(0, 100));
+
   const systemPrompt = 'You are a senior banking compliance officer in India with deep expertise in RBI regulations, PMLA, Basel III, KYC/AML, SEBI, and FEMA. Answer clearly and practically. Be specific with numbers, thresholds, deadlines. Keep answers under 200 words. Plain prose only.\n\n' + circularContext;
 
   try {
@@ -147,11 +191,12 @@ app.post('/api/chat', async (req, res) => {
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_API_KEY },
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: lastMessage }],
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: msgContent }],
         max_tokens: 500
       })
     });
     const data = await response.json();
+    console.log('Groq response status:', response.status, JSON.stringify(data).slice(0, 200));
     const reply = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
     if (reply) { res.json({ reply }); }
     else { res.json({ error: 'Unexpected: ' + JSON.stringify(data).slice(0, 200) }); }
