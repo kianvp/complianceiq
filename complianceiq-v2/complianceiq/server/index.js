@@ -33,25 +33,6 @@ const TAG_RULES = [
   { keywords: ['stock broker', 'clearing', 'settlement'], tag: 'Markets' },
 ];
 
-const EXCLUDE_KEYWORDS = [
-  'prohibitory order', 'adjudication order', 'recovery certificate',
-  'release order', 'cancellation of recovery', 'notice of demand',
-  'takes charge', 'appointed as', 'consent order', 'debarment',
-  'disgorgement', 'writ', 'tribunal'
-];
-
-function isRealCircular(title, link) {
-  const t = (title || '').toLowerCase();
-  const l = (link || '').toLowerCase();
-  // For SEBI RSS, only keep actual circulars (not enforcement/court items)
-  if (l.includes('sebi.gov.in')) {
-    const isCircular = l.includes('/legal/circulars/') || l.includes('/legal/master-circulars/') || l.includes('/media-and-notifications/circulars/');
-    const isEnforcement = l.includes('/enforcement/') || l.includes('/orders/') || l.includes('/recovery-proceedings/');
-    if (isEnforcement) return false;
-  }
-  return !EXCLUDE_KEYWORDS.some(kw => t.includes(kw));
-}
-
 function classifyTags(title, summary) {
   title = title || ''; summary = summary || '';
   const text = (title + ' ' + summary).toLowerCase();
@@ -75,7 +56,6 @@ async function fetchFeed(key, config) {
   try {
     const feed = await parser.parseURL(config.url);
     return (feed.items || [])
-      .filter(item => isRealCircular(item.title, item.link))
       .slice(0, 25)
       .map(item => ({
         id: item.guid || item.link || item.title,
