@@ -12,7 +12,7 @@ app.use(express.json());
 
 const FEEDS = {
   sebi_circulars: { url: 'https://www.sebi.gov.in/sebirss.xml', label: 'SEBI', category: 'Circular', color: 'green' },
-  rbi_taxguru: { url: 'https://taxguru.in/category/rbi/feed/', label: 'RBI', category: 'Circular', color: 'blue' },
+  rbi_taxguru: { url: 'https://taxguru.in/category/fema-rbi/feed/', label: 'RBI', category: 'Circular', color: 'blue' },
 };
 
 const TAG_RULES = [
@@ -43,7 +43,12 @@ const EXCLUDE_KEYWORDS = [
 function isRealCircular(title, link) {
   const t = (title || '').toLowerCase();
   const l = (link || '').toLowerCase();
-  if (l.includes('sebi.gov.in') && !l.includes('/legal/circulars/') && !l.includes('/legal/master-circulars/')) return false;
+  // For SEBI RSS, only keep actual circulars (not enforcement/court items)
+  if (l.includes('sebi.gov.in')) {
+    const isCircular = l.includes('/legal/circulars/') || l.includes('/legal/master-circulars/') || l.includes('/media-and-notifications/circulars/');
+    const isEnforcement = l.includes('/enforcement/') || l.includes('/orders/') || l.includes('/recovery-proceedings/');
+    if (isEnforcement) return false;
+  }
   return !EXCLUDE_KEYWORDS.some(kw => t.includes(kw));
 }
 
