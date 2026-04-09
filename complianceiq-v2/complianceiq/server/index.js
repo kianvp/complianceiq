@@ -11,9 +11,64 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 const FEEDS = {
-  sebi_circulars: { url: 'https://www.sebi.gov.in/sebirss.xml', label: 'SEBI', category: 'Circular', color: 'green' },
   rbi_taxguru: { url: 'https://taxguru.in/category/fema-rbi/feed/', label: 'RBI', category: 'Circular', color: 'blue' },
 };
+
+// Scrape SEBI circulars page directly
+async function fetchSEBICirculars() {
+  try {
+    const res = await fetch('https://www.sebi.gov.in/sebiweb/home/HomeAction.do?doListing=yes&sid=1&ssid=7&smid=0', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+      }
+    });
+    const html = await res.text();
+
+    // Extract circulars from the table
+    const rows = [...html.matchAll(/<td[^>]*>\s*(\d{2} \w+ \d{4})\s*<\/td>\s*<td[^>]*>\s*<a href="([^"]+)"[^>]*>([^<]+)<\/a>/gi)];
+    
+    if (rows.length > 0) {
+      console.log('SEBI scraper: got ' + rows.length + ' circulars');
+      return rows.slice(0, 25).map((row, i) => {
+        const date = row[1].trim();
+        const link = row[2].startsWith('http') ? row[2] : 'https://www.sebi.gov.in' + row[2];
+        const title = row[3].trim();
+        return {
+          id: link,
+          title,
+          summary: '',
+          link,
+          date,
+          source: 'SEBI',
+          category: 'Circular',
+          color: 'green',
+          tags: classifyTags(title, ''),
+          severity: scoreSeverity(title, ''),
+        };
+      });
+    }
+
+    console.log('SEBI scraper: no rows found, falling back to RSS');
+    // Fallback to RSS
+    const feed = await parser.parseURL('https://www.sebi.gov.in/sebirss.xml');
+    return (feed.items || []).slice(0, 25).map(item => ({
+      id: item.guid || item.link || item.title,
+      title: item.title || 'Untitled',
+      summary: item.contentSnippet || '',
+      link: item.link || '',
+      date: item.pubDate || new Date().toISOString(),
+      source: 'SEBI',
+      category: 'Circular',
+      color: 'green',
+      tags: classifyTags(item.title, item.contentSnippet || ''),
+      severity: scoreSeverity(item.title, item.contentSnippet || ''),
+    }));
+  } catch (err) {
+    console.error('SEBI scraper failed:', err.message);
+    return [];
+  }
+}
 
 const TAG_RULES = [
   { keywords: ['KYC', 'know your customer', 'customer due diligence'], tag: 'KYC' },
@@ -32,6 +87,30 @@ const TAG_RULES = [
   { keywords: ['mutual fund', 'scheme', 'AIF'], tag: 'Funds' },
   { keywords: ['stock broker', 'clearing', 'settlement'], tag: 'Markets' },
 ];
+
+// Only keep real SEBI circulars (not orders, enforcement, appointments)
+const SEBI_EXCLUDE = [
+  'prohibitory order', 'adjudication order', 'recovery certificate',
+  'release order', 'cancellation of recovery', 'notice of demand',
+  'takes charge', 'appointed as', 'consent order', 'debarment',
+  'disgorgement', 'interim order', 'ex-parte', 'show cause',
+  'penalty order', 'settlement order'
+];
+
+function isValidItem(item, sourceLabel) {
+  const title = (item.title || '').toLowerCase();
+  const link = (item.link || '').toLowerCase();
+
+  if (sourceLabel === 'SEBI') {
+    // Exclude enforcement/court-like items by title
+    if (SEBI_EXCLUDE.some(kw => title.includes(kw))) return false;
+    // Only keep items whose URL contains /legal/circulars/ or /legal/master-circulars/
+    if (link.includes('sebi.gov.in')) {
+      return link.includes('/legal/circulars/') || link.includes('/legal/master-circulars/');
+    }
+  }
+  return true;
+}
 
 function classifyTags(title, summary) {
   title = title || ''; summary = summary || '';
@@ -56,6 +135,7 @@ async function fetchFeed(key, config) {
   try {
     const feed = await parser.parseURL(config.url);
     return (feed.items || [])
+      .filter(item => isValidItem(item, config.label))
       .slice(0, 25)
       .map(item => ({
         id: item.guid || item.link || item.title,
@@ -81,12 +161,14 @@ app.get('/api/feed', async (req, res) => {
   const cached = cache.get('feed');
   if (cached) return res.json({ items: cached, cached: true, fetchedAt: cache.get('fetchedAt') });
 
-  const results = await Promise.allSettled(
-    Object.entries(FEEDS).map(([key, config]) => fetchFeed(key, config))
-  );
+  const [feedResults, sebiItems] = await Promise.all([
+    Promise.allSettled(Object.entries(FEEDS).map(([key, config]) => fetchFeed(key, config))),
+    fetchSEBICirculars()
+  ]);
 
-  const freshItems = results
-    .filter(r => r.status === 'fulfilled').flatMap(r => r.value)
+  const freshItems = [...feedResults
+    .filter(r => r.status === 'fulfilled').flatMap(r => r.value),
+    ...sebiItems]
     .filter((item, idx, arr) => arr.findIndex(i => i.id === item.id) === idx)
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, 60);
